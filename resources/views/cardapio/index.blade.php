@@ -98,7 +98,7 @@
                                 <th class="d-none d-md-table-cell">Descrição</th>
                                 <th class="text-end">Preço</th>
                                 <th class="text-center" style="width:110px">Status</th>
-                                <th class="text-end" style="width:110px">Ações</th>
+                                <th class="text-end" style="width:150px">Ações</th>
                             </tr>
                         </thead>
                         <tbody class="sortable-list" data-category="{{ $cat }}">
@@ -112,9 +112,9 @@
                                 <td>
                                     @if($item->image)
                                         <img src="{{ Storage::url($item->image) }}" alt=""
-                                             style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid #dee2e6;">
+                                             style="width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid var(--sh-border);">
                                     @else
-                                        <div style="width:40px;height:40px;border-radius:6px;background:#f4f4f4;display:flex;align-items:center;justify-content:center;font-size:1.3rem;border:1px solid #dee2e6;">
+                                        <div style="width:40px;height:40px;border-radius:6px;background:var(--sh-bg3);display:flex;align-items:center;justify-content:center;font-size:1.3rem;border:1px solid var(--sh-border);">
                                             {{ $emojiMap[$cat] ?? '🍴' }}
                                         </div>
                                     @endif
@@ -125,7 +125,7 @@
                                 <td class="text-center">
                                     <span class="badge {{ $s['class'] }}">{{ $s['label'] }}</span>
                                 </td>
-                                <td class="text-end">
+                                <td class="text-end" style="white-space:nowrap;">
                                     <a href="{{ route('cardapio.edit', $item) }}"
                                        class="btn btn-outline-secondary btn-sm me-1" title="Editar">
                                         <span class="material-symbols-outlined">edit</span>

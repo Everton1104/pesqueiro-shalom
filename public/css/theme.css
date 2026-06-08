@@ -1,0 +1,215 @@
+/* ===========================================================
+   Pesqueiro Shalom — tema do sistema interno (admin/comandas)
+   Identidade reaproveitada do cardápio público: dark + laranja.
+   Carregado DEPOIS do Bootstrap (5.3.8) para sobrescrever.
+   =========================================================== */
+
+:root {
+    --sh-bg:      #111111;
+    --sh-bg2:     #1a1a1a;   /* superfícies / cards */
+    --sh-bg3:     #252525;   /* elementos elevados / hover */
+    --sh-orange:  #d97706;
+    --sh-orange2: #f59e0b;
+    --sh-orange3: #fbbf24;
+    --sh-text:    #e8e8e8;
+    --sh-muted:   #8a8a7a;
+    --sh-border:  #2e2e2e;
+}
+
+/* ── Mapeia as variáveis do Bootstrap dark para a paleta da marca ── */
+[data-bs-theme="dark"] {
+    --bs-body-bg:            var(--sh-bg);
+    --bs-body-bg-rgb:        17, 17, 17;
+    --bs-body-color:         var(--sh-text);
+    --bs-body-color-rgb:     232, 232, 232;
+    --bs-secondary-bg:       var(--sh-bg2);
+    --bs-tertiary-bg:        var(--sh-bg3);
+    --bs-border-color:       var(--sh-border);
+    --bs-emphasis-color:     #fff;
+    --bs-secondary-color:    var(--sh-muted);
+
+    --bs-primary:            var(--sh-orange);
+    --bs-primary-rgb:        217, 119, 6;
+    --bs-link-color:         var(--sh-orange2);
+    --bs-link-color-rgb:     245, 158, 11;
+    --bs-link-hover-color:   var(--sh-orange3);
+
+    --bs-card-bg:            var(--sh-bg2);
+    --bs-card-border-color:  var(--sh-border);
+}
+
+body {
+    font-family: 'Nunito', sans-serif;
+    background:
+        radial-gradient(1200px 500px at 50% -10%, rgba(217,119,6,.07), transparent 60%),
+        var(--sh-bg);
+    min-height: 100vh;
+}
+
+/* ── NAVBAR com identidade ── */
+.sh-navbar {
+    background: rgba(13,13,13,.92);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-bottom: 2px solid var(--sh-orange);
+}
+.sh-navbar .navbar-brand {
+    font-weight: 800;
+    letter-spacing: .04em;
+    color: var(--sh-orange);
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+.sh-navbar .navbar-brand span { color: var(--sh-text); }
+.sh-navbar .navbar-brand img { width: 26px; height: 26px; }
+.sh-navbar .nav-link {
+    color: var(--sh-muted) !important;
+    font-weight: 600;
+    font-size: .9rem;
+    border-radius: 6px;
+    padding: .35rem .8rem !important;
+    transition: color .15s, background .15s;
+}
+.sh-navbar .nav-link:hover,
+.sh-navbar .nav-link.active {
+    color: var(--sh-text) !important;
+    background: var(--sh-bg3);
+}
+.sh-navbar .dropdown-menu { border-color: var(--sh-border); }
+/* Hamburguer visível no tema escuro (mobile) */
+.sh-navbar .navbar-toggler {
+    border-color: var(--sh-border);
+    padding: .3rem .55rem;
+}
+.sh-navbar .navbar-toggler:focus { box-shadow: 0 0 0 .2rem rgba(217,119,6,.25); }
+.sh-navbar .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23f59e0b' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+/* ── CARDS ── */
+.card {
+    border-color: var(--sh-border);
+    box-shadow: 0 .35rem 1rem rgba(0,0,0,.25);
+}
+.card-header {
+    background: var(--sh-bg3);
+    border-bottom-color: var(--sh-border);
+    font-weight: 700;
+}
+
+/* ── BOTÕES ── */
+.btn-primary {
+    --bs-btn-bg: var(--sh-orange);
+    --bs-btn-border-color: var(--sh-orange);
+    --bs-btn-hover-bg: var(--sh-orange2);
+    --bs-btn-hover-border-color: var(--sh-orange2);
+    --bs-btn-active-bg: var(--sh-orange2);
+    --bs-btn-active-border-color: var(--sh-orange2);
+    --bs-btn-disabled-bg: var(--sh-orange);
+    --bs-btn-disabled-border-color: var(--sh-orange);
+    --bs-btn-color: #1a1200;
+    --bs-btn-hover-color: #1a1200;
+    --bs-btn-active-color: #1a1200;
+    font-weight: 700;
+}
+.btn-outline-primary {
+    --bs-btn-color: var(--sh-orange2);
+    --bs-btn-border-color: var(--sh-orange);
+    --bs-btn-hover-bg: var(--sh-orange);
+    --bs-btn-hover-border-color: var(--sh-orange);
+    --bs-btn-hover-color: #1a1200;
+    --bs-btn-active-bg: var(--sh-orange);
+    --bs-btn-active-border-color: var(--sh-orange);
+}
+.btn-success {
+    --bs-btn-bg: #15803d;
+    --bs-btn-border-color: #15803d;
+    --bs-btn-hover-bg: #16a34a;
+    --bs-btn-hover-border-color: #16a34a;
+    font-weight: 700;
+}
+
+/* ── TABELAS ── */
+.table {
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--sh-text);
+    --bs-table-border-color: var(--sh-border);
+    --bs-table-hover-bg: var(--sh-bg3);
+    --bs-table-hover-color: #fff;
+}
+/* thead que no Bootstrap fica claro -> superfície escura da marca */
+.table-light,
+.table > thead.table-light > tr > th,
+thead.table-light th {
+    --bs-table-bg: var(--sh-bg3) !important;
+    --bs-table-color: var(--sh-muted) !important;
+    background-color: var(--sh-bg3) !important;
+    color: var(--sh-muted) !important;
+    border-color: var(--sh-border) !important;
+    text-transform: uppercase;
+    font-size: .74rem;
+    letter-spacing: .05em;
+}
+.table tfoot.table-light td { background-color: var(--sh-bg3) !important; }
+
+/* ── SUPERFÍCIES CLARAS FIXAS -> escuras ── */
+.bg-white,
+.bg-light {
+    background-color: var(--sh-bg2) !important;
+    color: var(--sh-text) !important;
+}
+.bg-success-subtle { background-color: rgba(21,128,61,.18) !important; color: #4ade80 !important; }
+
+/* ── BADGES de código (bg-light text-dark) ── */
+.badge.bg-light {
+    background-color: var(--sh-bg3) !important;
+    color: var(--sh-orange2) !important;
+    border-color: var(--sh-border) !important;
+}
+.badge.bg-secondary { background-color: #3a3a3a !important; }
+
+/* ── FORMULÁRIOS ── */
+.form-control,
+.form-select {
+    background-color: var(--sh-bg2);
+    border-color: var(--sh-border);
+    color: var(--sh-text);
+}
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--sh-bg2);
+    border-color: var(--sh-orange);
+    color: var(--sh-text);
+    box-shadow: 0 0 0 .2rem rgba(217,119,6,.2);
+}
+.form-control::placeholder { color: #6b6b5e; }
+.input-group-text {
+    background-color: var(--sh-bg3);
+    border-color: var(--sh-border);
+    color: var(--sh-muted);
+}
+
+/* ── ALERTAS ── */
+.alert-success {
+    --bs-alert-bg: rgba(21,128,61,.15);
+    --bs-alert-border-color: rgba(21,128,61,.4);
+    --bs-alert-color: #4ade80;
+}
+.alert-danger {
+    --bs-alert-bg: rgba(239,68,68,.13);
+    --bs-alert-border-color: rgba(239,68,68,.4);
+    --bs-alert-color: #f87171;
+}
+
+/* ── TÍTULOS de seção ── */
+.fw-bold { letter-spacing: .01em; }
+
+/* Texto auxiliar */
+.text-muted { color: var(--sh-muted) !important; }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--sh-bg); }
+::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--sh-orange); }

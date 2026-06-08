@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Setting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class HomeController extends Controller
 {
@@ -13,7 +15,26 @@ class HomeController extends Controller
 
     public function index()
     {
+        // Funcionários (não-admin) vão direto para as comandas
+        if (!auth()->user()->is_admin) {
+            return redirect()->route('comandas.index');
+        }
+
         return view('home');
+    }
+
+    // Define a senha de autorização exigida de não-admins (cancelar/excluir)
+    public function updateAuthPassword(Request $request)
+    {
+        abort_unless(auth()->user()->is_admin, 403);
+
+        $data = $request->validate([
+            'auth_password' => 'required|string|min:4|max:50',
+        ]);
+
+        Setting::set('cancel_auth_password', Hash::make($data['auth_password']));
+
+        return redirect()->route('home')->with('status', 'Senha de autorização atualizada.');
     }
 
     public function uploadCardapio(Request $request)
