@@ -24,6 +24,7 @@
     }
     .pad-item .info { padding: .5rem .6rem; }
     .pad-item .nome { font-weight: 600; font-size: .9rem; line-height: 1.15; color: var(--sh-text, #e8e8e8); }
+    .pad-item .descricao { font-size: .75rem; line-height: 1.2; color: var(--sh-muted, #9ca3af); margin-top: .15rem; }
     .pad-item .preco { color: var(--sh-orange2, #f59e0b); font-weight: 800; font-size: .9rem; margin-top: .15rem; }
     .pad-item.is-hidden { display: none; }
 
@@ -32,11 +33,12 @@
     .qty-stepper .btn { width: 56px; height: 56px; font-size: 1.6rem; border-radius: 50%; padding: 0; }
     .qty-stepper input { width: 90px; text-align: center; font-size: 1.8rem; font-weight: 700; }
 
-    /* ── CUPOM DE IMPRESSÃO (impressora térmica 58mm) ── */
+    /* ── CUPOM DE IMPRESSÃO (impressora térmica 80mm) ── */
     .print-area { display: none; }
+    .resumo-area { display: none; }
 
     @media print {
-        @page { size: 58mm auto; margin: 3mm; }
+        @page { size: 80mm auto; margin: 3mm; }
         html, body { background: #fff !important; margin: 0; padding: 0; }
 
         /* remove a UI do fluxo (evita páginas em branco) e mostra só o cupom */
@@ -55,7 +57,7 @@
         .pa-qrbox {
             border: 2px solid #000; border-radius: 4px;
             padding: 2mm;
-            width: 38mm;          /* menor que a largura útil */
+            width: 50mm;          /* menor que a largura útil (80mm) */
             margin: 0 auto;        /* centralizado */
         }
         .pa-qrbox img, .pa-qrbox canvas {
@@ -76,7 +78,67 @@
             margin-top: 2.5mm; padding-top: 2mm; border-top: 1px dashed #000;
         }
         .pa-info .pa-cliente { font-size: 11pt; font-weight: 800; }
+
+        /* ── Resumo da comanda (cupom alternativo) ── */
+        body.print-resumo .print-area { display: none !important; }
+        body.print-resumo .resumo-area {
+            display: block; width: 100%; color: #000;
+            font-family: 'Nunito', Arial, sans-serif;
+        }
+        .ra-brand {
+            text-align: center; font-weight: 800; font-size: 11pt;
+            letter-spacing: .06em; margin-bottom: 1mm;
+        }
+        .ra-cliente { text-align: center; font-size: 11pt; font-weight: 800; }
+        .ra-meta {
+            text-align: center; font-size: 8pt; line-height: 1.4;
+            margin-bottom: 2mm;
+        }
+        .ra-meta .ra-code { font-family: 'Courier New', monospace; letter-spacing: .12em; }
+        .ra-items, .ra-tot { width: 100%; border-collapse: collapse; font-size: 9pt; }
+        .ra-items { border-top: 1px dashed #000; margin-top: 2mm; }
+        .ra-items td { padding: .7mm 0; vertical-align: top; }
+        .ra-items .q { white-space: nowrap; padding-right: 1.5mm; }
+        .ra-items .v { text-align: right; white-space: nowrap; padding-left: 1.5mm; }
+        .ra-items .obs { font-size: 7.5pt; }
+        .ra-tot { border-top: 1px dashed #000; margin-top: 2mm; padding-top: 1mm; }
+        .ra-tot td { padding: .4mm 0; }
+        .ra-tot .v { text-align: right; }
+        .ra-tot .ra-total td {
+            font-weight: 800; font-size: 11pt;
+            border-top: 1px solid #000; padding-top: 1mm;
+        }
+        .ra-foot { text-align: center; font-size: 8pt; margin-top: 2.5mm; }
+
+        /* ── Divisão da conta (cupom alternativo) ── */
+        body.print-divisao .print-area,
+        body.print-divisao .resumo-area { display: none !important; }
+        body.print-divisao .divisao-area {
+            display: block; width: 100%; color: #000;
+            font-family: 'Nunito', Arial, sans-serif;
+        }
+        .da-title {
+            text-align: center; font-weight: 800; font-size: 10pt;
+            text-transform: uppercase; letter-spacing: .08em;
+            margin-top: 2mm; padding-top: 2mm; border-top: 1px dashed #000;
+        }
+        .da-big {
+            text-align: center; font-size: 18pt; font-weight: 800; margin: 1.5mm 0;
+        }
+        .da-pessoa {
+            margin-top: 2.5mm; padding-top: 1.5mm; border-top: 1px dashed #000;
+            font-size: 9pt;
+        }
+        .da-pessoa .da-nome {
+            display: flex; justify-content: space-between;
+            font-weight: 800; font-size: 10pt;
+        }
+        .da-pessoa .da-linha {
+            display: flex; justify-content: space-between; font-size: 8.5pt;
+        }
     }
+
+    .divisao-area { display: none; }
 </style>
 
 <div class="container-lg">
@@ -90,6 +152,60 @@
         <div class="pa-info">
             <div>Aberta em {{ $comanda->created_at->format('d/m/Y H:i') }}</div>
         </div>
+    </div>
+
+    {{-- Resumo impresso (visível só ao imprimir o resumo — 58mm) --}}
+    <div class="resumo-area">
+        <div class="ra-brand">PESQUEIRO SHALOM</div>
+        <div class="ra-cliente">{{ $comanda->cliente }}</div>
+        <div class="ra-meta">
+            <div>Comanda <span class="ra-code">{{ $comanda->codigo }}</span></div>
+            <div>Aberta em {{ $comanda->created_at->format('d/m/Y H:i') }}</div>
+            @if(!$comanda->is_open && $comanda->closed_at)
+                <div>Fechada em {{ $comanda->closed_at->format('d/m/Y H:i') }}</div>
+            @endif
+        </div>
+        <table class="ra-items">
+            @forelse($comanda->items as $item)
+                <tr>
+                    <td class="q">{{ $item->quantity }}x</td>
+                    <td>{{ $item->name }}</td>
+                    <td class="v">{{ $item->subtotal_formatted }}</td>
+                </tr>
+                @if($item->observacao)
+                    <tr><td></td><td colspan="2" class="obs">— {{ $item->observacao }}</td></tr>
+                @endif
+            @empty
+                <tr><td colspan="3" style="text-align:center;padding:2mm 0;">Nenhum item lançado.</td></tr>
+            @endforelse
+        </table>
+        <table class="ra-tot">
+            <tr><td>Subtotal</td><td class="v">{{ $comanda->subtotal_formatted }}</td></tr>
+            @if($comanda->service_fee > 0)
+                <tr><td>Taxa de serviço</td><td class="v">{{ $comanda->service_fee_formatted }}</td></tr>
+            @endif
+            <tr class="ra-total"><td>TOTAL</td><td class="v">{{ $comanda->total_formatted }}</td></tr>
+            @if($comanda->tem_pagamentos_parciais)
+                <tr><td>Já pago</td><td class="v">{{ $comanda->pago_formatted }}</td></tr>
+                <tr class="ra-total"><td>RESTANTE</td><td class="v">{{ $comanda->restante_formatted }}</td></tr>
+            @endif
+            @if(!$comanda->is_open && $comanda->payment_method)
+                <tr><td>Pagamento</td><td class="v">{{ \App\Models\Comanda::paymentLabel($comanda->payment_method) }}</td></tr>
+            @endif
+        </table>
+        <div class="ra-foot">Obrigado pela preferência!</div>
+    </div>
+
+    {{-- Divisão da conta impressa (visível só ao imprimir a divisão — 80mm) --}}
+    <div class="divisao-area">
+        <div class="ra-brand">PESQUEIRO SHALOM</div>
+        <div class="ra-cliente">{{ $comanda->cliente }}</div>
+        <div class="ra-meta">
+            <div>Comanda <span class="ra-code">{{ $comanda->codigo }}</span></div>
+            <div>{{ now()->format('d/m/Y H:i') }}</div>
+        </div>
+        <div id="divisao-body"></div>
+        <div class="ra-foot">Obrigado pela preferência!</div>
     </div>
 
     <div class="mb-3">
@@ -187,6 +303,9 @@
                     @endif
                     <div class="info">
                         <div class="nome">{{ $ci->name }}</div>
+                        @if($ci->description)
+                            <div class="descricao">{{ $ci->description }}</div>
+                        @endif
                         <div class="preco">{{ $ci->price_formatted }}</div>
                     </div>
                 </div>
@@ -215,10 +334,17 @@
                             </tr>
                         </thead>
                         <tbody>
+                            @php $paidMap = $comanda->itemPaidQuantities(); @endphp
                             @forelse($comanda->items as $item)
+                            @php $itemPago = $paidMap[$item->id] ?? 0; @endphp
                             <tr>
                                 <td>
                                     <span class="fw-semibold">{{ $item->name }}</span>
+                                    @if($itemPago > 0)
+                                        <span class="badge bg-success-subtle text-success border border-success ms-1" title="Itens já acertados (congelados)">
+                                            <span class="material-symbols-outlined align-middle" style="font-size:14px;">lock</span> {{ $itemPago }}x pago
+                                        </span>
+                                    @endif
                                     @if($item->observacao)<div class="text-muted small">{{ $item->observacao }}</div>@endif
                                 </td>
                                 <td class="text-end">{{ $item->unit_price_formatted }}</td>
@@ -228,7 +354,7 @@
                                               class="d-inline-flex align-items-center gap-1">
                                             @csrf @method('PATCH')
                                             <input type="number" name="quantity" value="{{ $item->quantity }}"
-                                                   min="1" max="99" class="form-control form-control-sm text-center"
+                                                   min="{{ max(1, $itemPago) }}" max="99" class="form-control form-control-sm text-center"
                                                    style="width:64px" onchange="this.form.submit()">
                                         </form>
                                     @else
@@ -238,13 +364,19 @@
                                 <td class="text-end fw-semibold">{{ $item->subtotal_formatted }}</td>
                                 @if($comanda->is_open)
                                 <td class="text-end">
-                                    <form action="{{ route('comandas.itens.remove', [$comanda, $item]) }}" method="POST"
-                                          onsubmit="return confirm('Remover {{ addslashes($item->name) }}?')">
-                                        @csrf @method('DELETE')
-                                        <button class="btn btn-outline-danger btn-sm" title="Remover">
-                                            <span class="material-symbols-outlined">delete</span>
+                                    @if($itemPago > 0)
+                                        <button class="btn btn-outline-secondary btn-sm" disabled title="Item já acertado — estorne o acerto para remover">
+                                            <span class="material-symbols-outlined">lock</span>
                                         </button>
-                                    </form>
+                                    @else
+                                        <form action="{{ route('comandas.itens.remove', [$comanda, $item]) }}" method="POST"
+                                              onsubmit="return confirm('Remover {{ addslashes($item->name) }}?')">
+                                            @csrf @method('DELETE')
+                                            <button class="btn btn-outline-danger btn-sm" title="Remover">
+                                                <span class="material-symbols-outlined">delete</span>
+                                            </button>
+                                        </form>
+                                    @endif
                                 </td>
                                 @endif
                             </tr>
@@ -257,7 +389,7 @@
                                 <td colspan="3" class="text-end fw-semibold">Subtotal</td>
                                 <td class="text-end fw-bold" colspan="{{ $comanda->is_open ? 2 : 1 }}">{{ $comanda->subtotal_formatted }}</td>
                             </tr>
-                            @if($comanda->service_fee > 0 || !$comanda->is_open)
+                            @if($comanda->service_fee > 0)
                             <tr>
                                 <td colspan="3" class="text-end fw-semibold">Taxa de serviço</td>
                                 <td class="text-end" colspan="{{ $comanda->is_open ? 2 : 1 }}">{{ $comanda->service_fee_formatted }}</td>
@@ -276,84 +408,189 @@
         {{-- Fechar --}}
         <div class="col-12 col-lg-5 no-print">
             @if($comanda->is_open)
-                {{-- Dividir conta --}}
-                @if($comanda->items->isNotEmpty())
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <span class="fw-bold">Dividir conta</span>
-                        <button class="btn btn-outline-primary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#dividirBox">
-                            <span class="material-symbols-outlined">call_split</span> Dividir
-                        </button>
+                {{-- ── Fechamento da comanda: divisão + acertos + fechar (unificado) ── --}}
+                <div class="card shadow-sm border-success" id="acertos-card">
+                    <div class="card-header fw-bold bg-success-subtle d-flex align-items-center justify-content-between">
+                        <span><span class="material-symbols-outlined align-middle">point_of_sale</span> Fechamento da comanda</span>
+                        @if($comanda->tem_pagamentos_parciais)
+                            <span class="badge bg-success">{{ $comanda->pagamentos->count() }} acerto(s)</span>
+                        @endif
                     </div>
-                    <div class="collapse" id="dividirBox">
-                        <div class="card-body">
-                            <ul class="nav nav-pills nav-fill mb-3">
-                                <li class="nav-item"><button class="nav-link active" type="button" data-bs-toggle="pill" data-bs-target="#split-igual">Igualmente</button></li>
-                                <li class="nav-item"><button class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#split-itens">Por pessoa</button></li>
-                            </ul>
-                            <div class="tab-content">
-                                {{-- Divisão igual --}}
-                                <div class="tab-pane fade show active" id="split-igual">
-                                    <label class="form-label">Número de pessoas</label>
-                                    <input type="number" id="eq-people" class="form-control" value="2" min="1" max="50">
-                                    <div class="mt-3 text-center">
-                                        <div class="text-muted small">Cada pessoa paga</div>
-                                        <div class="fs-2 fw-bold" id="eq-result" style="color:var(--sh-orange2);">—</div>
-                                        <div class="text-muted small" id="eq-base"></div>
-                                    </div>
-                                </div>
-                                {{-- Divisão por pessoa (itens) --}}
-                                <div class="tab-pane fade" id="split-itens">
-                                    <div class="d-flex align-items-end gap-2 mb-1">
-                                        <div>
-                                            <label class="form-label mb-1">Pessoas</label>
-                                            <input type="number" id="it-people" class="form-control" value="2" min="1" max="10" style="width:90px;">
+                    <div class="card-body">
+                        @if($comanda->items->isNotEmpty())
+                            {{-- Resumo --}}
+                            <div class="d-flex justify-content-between small text-muted">
+                                <span>Total dos itens</span><span>{{ $comanda->subtotal_formatted }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Já pago</span><span class="fw-semibold text-success">{{ $comanda->pago_formatted }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mt-1 pt-1 border-top">
+                                <span class="fw-bold">Restante</span>
+                                <span class="fw-bold fs-4" style="color:var(--sh-orange2);">{{ $comanda->restante_formatted }}</span>
+                            </div>
+
+                            @if($comanda->restante > 0)
+                                {{-- Dividir conta (colapsável) --}}
+                                <button class="btn btn-outline-primary btn-sm w-100 mt-3" type="button" data-bs-toggle="collapse" data-bs-target="#dividirBox">
+                                    <span class="material-symbols-outlined align-middle">call_split</span> Dividir conta
+                                </button>
+                                <div class="collapse mt-3" id="dividirBox">
+                                    <ul class="nav nav-pills nav-fill mb-3">
+                                        <li class="nav-item"><button class="nav-link active" type="button" data-bs-toggle="pill" data-bs-target="#split-igual">Igualmente</button></li>
+                                        <li class="nav-item"><button class="nav-link" type="button" data-bs-toggle="pill" data-bs-target="#split-itens">Por pessoa</button></li>
+                                    </ul>
+                                    @if($comanda->tem_pagamentos_parciais)
+                                        <div class="alert alert-info py-2 small mb-3">
+                                            Já pago <strong>{{ $comanda->pago_formatted }}</strong> · restante <strong>{{ $comanda->restante_formatted }}</strong>.
+                                            Valores pagos "soltos" (sem itens) viram crédito e são abatidos igualmente de cada pessoa.
+                                        </div>
+                                    @endif
+                                    <div class="tab-content">
+                                        {{-- Divisão igual --}}
+                                        <div class="tab-pane fade show active" id="split-igual">
+                                            <label class="form-label">Número de pessoas</label>
+                                            <input type="number" id="eq-people" class="form-control" value="2" min="1" max="50">
+                                            <div class="mt-3 text-center">
+                                                <div class="text-muted small">Cada pessoa paga</div>
+                                                <div class="fs-2 fw-bold" id="eq-result" style="color:var(--sh-orange2);">—</div>
+                                                <div class="text-muted small" id="eq-base"></div>
+                                            </div>
+                                            <div class="d-grid gap-2 mt-3">
+                                                <button type="button" class="btn btn-success" onclick="registrarParteIgual()">
+                                                    <span class="material-symbols-outlined">paid</span> Registrar 1 parte como paga
+                                                </button>
+                                                <button type="button" class="btn btn-outline-secondary" onclick="imprimirDivisaoIgual()">
+                                                    <span class="material-symbols-outlined">print</span> Imprimir divisão
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {{-- Divisão por pessoa (itens) --}}
+                                        <div class="tab-pane fade" id="split-itens">
+                                            <div class="d-flex align-items-end gap-2 mb-1">
+                                                <div>
+                                                    <label class="form-label mb-1">Pessoas</label>
+                                                    <input type="number" id="it-people" class="form-control" value="2" min="1" max="10" style="width:90px;">
+                                                </div>
+                                            </div>
+                                            <p class="form-text mt-1">Atribua a cada pessoa os itens que consumiu. Itens já acertados não aparecem.</p>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm align-middle mb-1">
+                                                    <thead class="table-light"><tr id="it-head"></tr></thead>
+                                                    <tbody id="it-body"></tbody>
+                                                    <tfoot class="table-light"><tr id="it-foot"></tr></tfoot>
+                                                </table>
+                                            </div>
+                                            <div class="small text-warning" id="it-warn"></div>
+                                            <button type="button" class="btn btn-outline-secondary w-100 mt-2" onclick="imprimirDivisaoPessoa()">
+                                                <span class="material-symbols-outlined">print</span> Imprimir divisão
+                                            </button>
                                         </div>
                                     </div>
-                                    <p class="form-text mt-1">Para cada item, informe quantas unidades cada pessoa consumiu.</p>
-                                    <div class="table-responsive">
-                                        <table class="table table-sm align-middle mb-1">
-                                            <thead class="table-light"><tr id="it-head"></tr></thead>
-                                            <tbody id="it-body"></tbody>
-                                            <tfoot class="table-light"><tr id="it-foot"></tr></tfoot>
-                                        </table>
-                                    </div>
-                                    <div class="small text-warning" id="it-warn"></div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                @endif
+                            @endif
 
-                <div class="card shadow-sm border-success">
-                    <div class="card-header fw-bold bg-success-subtle">Fechar comanda</div>
-                    <div class="card-body">
-                        <form action="{{ route('comandas.fechar', $comanda) }}" method="POST"
-                              onsubmit="return confirm('Fechar a comanda de {{ addslashes($comanda->cliente) }}?')">
-                            @csrf
-                            <div class="mb-3">
-                                <label class="form-label">Forma de pagamento *</label>
-                                <select name="payment_method" class="form-select" required>
-                                    <option value="">Selecione…</option>
-                                    @foreach($methods as $key => $label)
-                                        <option value="{{ $key }}">{{ $label }}</option>
+                            {{-- Lista de acertos --}}
+                            @if($comanda->pagamentos->isNotEmpty())
+                                <ul class="list-group list-group-flush mt-3">
+                                    @foreach($comanda->pagamentos as $pg)
+                                        <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <div class="fw-semibold">{{ $pg->valor_formatted }}
+                                                    <span class="badge bg-light text-dark border ms-1">{{ $pg->method_label }}</span>
+                                                </div>
+                                                <div class="text-muted small">
+                                                    {{ $pg->descricao ?: 'Acerto' }} · {{ $pg->created_at->format('d/m H:i') }}
+                                                    @if($pg->user) · {{ $pg->user->name }} @endif
+                                                </div>
+                                                @if($pg->detalhe_linhas)
+                                                    <div class="text-muted small fst-italic">{{ implode(' · ', $pg->detalhe_linhas) }}</div>
+                                                @endif
+                                            </div>
+                                            <div class="d-flex gap-1">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                        onclick="imprimirComprovante({{ $pg->id }})" title="Comprovante">
+                                                    <span class="material-symbols-outlined">receipt</span>
+                                                </button>
+                                                <form action="{{ route('comandas.pagamentos.remove', [$comanda, $pg]) }}" method="POST"
+                                                      onsubmit="return confirm('Estornar este acerto de {{ $pg->valor_formatted }}?')">
+                                                    @csrf @method('DELETE')
+                                                    <button class="btn btn-sm btn-outline-danger" title="Estornar">
+                                                        <span class="material-symbols-outlined">undo</span>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </li>
                                     @endforeach
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Taxa de serviço (R$)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">R$</span>
-                                    <input type="number" name="service_fee" id="service_fee" value="0" min="0" step="0.01" class="form-control">
-                                    <button type="button" class="btn btn-outline-secondary" id="btn-fee-10" title="10% do subtotal">+10%</button>
+                                </ul>
+                            @endif
+
+                            @if($comanda->restante > 0)
+                                {{-- Registrar pagamento (manual ou vindo da divisão) --}}
+                                <form action="{{ route('comandas.pagamentos.add', $comanda) }}" method="POST" class="mt-3" id="acerto-form">
+                                    @csrf
+                                    <input type="hidden" name="detalhe" id="acerto-detalhe">
+                                    <div class="fw-semibold small mb-2 text-muted text-uppercase">Registrar pagamento</div>
+                                    <div class="row g-2">
+                                        <div class="col-12">
+                                            <label class="form-label mb-1 small">Quem está pagando (opcional)</label>
+                                            <input type="text" name="descricao" id="acerto-descricao" class="form-control form-control-sm"
+                                                   maxlength="60" placeholder="Ex: Casal, Pessoa 1…">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label mb-1 small">Valor *</label>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">R$</span>
+                                                <input type="number" name="valor" id="acerto-valor" class="form-control"
+                                                       step="0.01" min="0.01" max="{{ $comanda->restante }}"
+                                                       value="{{ $comanda->restante }}" required>
+                                            </div>
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label mb-1 small">Forma *</label>
+                                            <select name="payment_method" class="form-select form-select-sm" required>
+                                                <option value="">Selecione…</option>
+                                                @foreach($methods as $key => $label)
+                                                    <option value="{{ $key }}">{{ $label }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-outline-success w-100 mt-2">
+                                        <span class="material-symbols-outlined">add_card</span> Registrar acerto
+                                    </button>
+                                </form>
+                            @else
+                                <div class="alert alert-success mt-3 mb-0 py-2 text-center small">
+                                    <span class="material-symbols-outlined align-middle">check_circle</span>
+                                    Comanda totalmente acertada. Pode fechar.
                                 </div>
-                                <div class="form-text">10% do subtotal = {{ \App\Models\Comanda::money($comanda->subtotal * 0.10) }}</div>
-                            </div>
-                            <button class="btn btn-success w-100">
-                                <span class="material-symbols-outlined">paid</span> Fechar e registrar pagamento
-                            </button>
-                        </form>
+                            @endif
+
+                            <hr class="my-3">
+
+                            {{-- Fechar — só quando tudo foi acertado --}}
+                            @if($comanda->restante > 0)
+                                <button class="btn btn-success w-100" disabled>
+                                    <span class="material-symbols-outlined">paid</span> Fechar comanda
+                                </button>
+                                <div class="form-text text-center">Registre os pagamentos até zerar o restante para poder fechar.</div>
+                            @else
+                                <form action="{{ route('comandas.fechar', $comanda) }}" method="POST"
+                                      onsubmit="return confirm('Fechar a comanda de {{ addslashes($comanda->cliente) }}?')">
+                                    @csrf
+                                    <button class="btn btn-success w-100">
+                                        <span class="material-symbols-outlined">paid</span> Fechar comanda
+                                    </button>
+                                </form>
+                            @endif
+                        @else
+                            <p class="text-muted small mb-0">Adicione itens para dividir e fechar a comanda.</p>
+                        @endif
+
+                        <button type="button" class="btn btn-outline-secondary w-100 mt-2" onclick="imprimirResumo()">
+                            <span class="material-symbols-outlined">receipt_long</span> Imprimir resumo
+                        </button>
                         <form action="{{ route('comandas.cancelar', $comanda) }}" method="POST" class="mt-2 requires-auth"
                               data-confirm="Cancelar esta comanda? Esta ação não pode ser desfeita.">
                             @csrf
@@ -367,10 +604,23 @@
                         <p class="mb-1"><strong>Comanda {{ $statuses[$comanda->status]['label'] }}.</strong></p>
                         @if($comanda->status === 'fechada')
                             <p class="text-muted small mb-0">
-                                Pagamento: {{ $methods[$comanda->payment_method] ?? '—' }}<br>
+                                Pagamento: {{ \App\Models\Comanda::paymentLabel($comanda->payment_method) }}<br>
                                 Fechada em {{ optional($comanda->closed_at)->format('d/m/Y H:i') }}
                             </p>
+                            @if($comanda->payment_method === \App\Models\Comanda::PAYMENT_MISTO && $comanda->pagamentos->isNotEmpty())
+                                <ul class="list-group list-group-flush small mt-2">
+                                    @foreach($comanda->pagamentos->sortBy('created_at') as $pg)
+                                        <li class="list-group-item px-0 py-1 d-flex justify-content-between">
+                                            <span>{{ $pg->method_label }}@if($pg->descricao) <span class="text-muted">· {{ $pg->descricao }}</span>@endif</span>
+                                            <span class="fw-semibold">{{ $pg->valor_formatted }}</span>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
                         @endif
+                        <button type="button" class="btn btn-outline-secondary w-100 mt-3" onclick="imprimirResumo()">
+                            <span class="material-symbols-outlined">receipt_long</span> Imprimir resumo
+                        </button>
                     </div>
                 </div>
             @endif
@@ -422,11 +672,78 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 @endif
 <script>
+// Imprime o resumo da comanda (alterna o cupom mostrado na impressão)
+function imprimirResumo() {
+    document.body.classList.add('print-resumo');
+    window.print();
+}
+window.addEventListener('afterprint', () => document.body.classList.remove('print-resumo', 'print-divisao'));
+
+// ── Acertos (pagamentos parciais) ──
+@php
+    $pagamentosJs = $comanda->pagamentos->mapWithKeys(fn($p) => [$p->id => [
+        'descricao' => $p->descricao,
+        'valor'     => $p->valor_formatted,
+        'metodo'    => $p->method_label,
+        'data'      => $p->created_at->format('d/m/Y H:i'),
+    ]]);
+@endphp
+const PAGAMENTOS = @json($pagamentosJs);
+const RESTANTE_ATUAL = @json($comanda->restante_formatted);
+
+function brlToNumber(s) {
+    return parseFloat(String(s).replace(/[^0-9,.-]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+}
+function htmlEscape(s) {
+    return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+// Preenche o formulário de acerto com um valor (e o detalhe da divisão) vindo da divisão
+function preencherAcerto(valor, descricao, detalhe) {
+    const v = document.getElementById('acerto-valor');
+    const d = document.getElementById('acerto-descricao');
+    const det = document.getElementById('acerto-detalhe');
+    if (!v) { alert('A comanda já está totalmente acertada.'); return; }
+    v.value = (Math.round((Number(valor) || 0) * 100) / 100).toFixed(2);
+    if (d && descricao) d.value = descricao;
+    if (det) det.value = detalhe ? JSON.stringify(detalhe) : '';
+    const card = document.getElementById('acertos-card');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    v.focus();
+}
+
+// Editar o valor à mão invalida o detalhamento da divisão (deixa de bater)
+document.addEventListener('DOMContentLoaded', () => {
+    const v = document.getElementById('acerto-valor');
+    const det = document.getElementById('acerto-detalhe');
+    if (v && det) v.addEventListener('input', () => { det.value = ''; });
+});
+
+// Imprime o comprovante de um acerto já registrado
+function imprimirComprovante(id) {
+    const p = PAGAMENTOS[id];
+    if (!p) return;
+    const body = document.getElementById('divisao-body');
+    let h = '<div class="da-title">Comprovante de acerto</div>';
+    if (p.descricao) h += '<div class="ra-meta"><div>' + htmlEscape(p.descricao) + '</div></div>';
+    h += '<div class="da-big">' + p.valor + '</div>';
+    h += '<div style="text-align:center;font-size:9pt;">' + p.metodo + '</div>';
+    h += '<div style="text-align:center;font-size:8pt;margin-top:1mm;">' + p.data + '</div>';
+    h += '<div class="da-pessoa"><div class="da-nome"><span>Restante da mesa</span><span>' + RESTANTE_ATUAL + '</span></div></div>';
+    body.innerHTML = h;
+    document.body.classList.add('print-divisao');
+    window.print();
+}
+
 // Espera o módulo do Vite (type=module, deferred) definir window.bootstrap
 document.addEventListener('DOMContentLoaded', function () {
-    // move o cupom para fora do #app (que é ocultado na impressão)
+    // move os cupons para fora do #app (que é ocultado na impressão)
     const printArea = document.querySelector('.print-area');
     if (printArea) document.body.appendChild(printArea);
+    const resumoArea = document.querySelector('.resumo-area');
+    if (resumoArea) document.body.appendChild(resumoArea);
+    const divisaoArea = document.querySelector('.divisao-area');
+    if (divisaoArea) document.body.appendChild(divisaoArea);
 
     new QRCode(document.getElementById('qrcode'), {
         text: @json($comanda->codigo),
@@ -529,36 +846,40 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('qty-plus').addEventListener('click',  () => elQty.value = clamp(parseInt(elQty.value) + 1));
     modalEl.addEventListener('shown.bs.modal', () => { elQty.focus(); elQty.select(); });
 
-    // Botão +10% no fechamento
-    const fee10 = document.getElementById('btn-fee-10');
-    if (fee10) fee10.addEventListener('click', () => {
-        const sf = document.getElementById('service_fee');
-        sf.value = ({{ $comanda->subtotal }} * 0.10).toFixed(2);
-        sf.dispatchEvent(new Event('input'));
-    });
-
     // ── Divisão de conta ──
     (function () {
         const eqPeople = document.getElementById('eq-people');
         if (!eqPeople) return; // sem itens, não há divisão
 
         const SUBTOTAL = {{ $comanda->subtotal }};
-        const ITENS = @json($comanda->items->map(fn($i) => ['nome' => $i->name, 'preco' => (float) $i->unit_price, 'qtd' => $i->quantity])->values());
+        const PAGO     = {{ $comanda->pago }};
+        const RESTANTE = {{ $comanda->restante }}; // o que ainda falta acertar
+        @php
+            $paidMap = $comanda->itemPaidQuantities();
+            $itensJs = $comanda->items->map(fn($i) => [
+                'id'    => $i->id,
+                'nome'  => $i->name,
+                'preco' => (float) $i->unit_price,
+                'qtd'   => $i->quantity - ($paidMap[$i->id] ?? 0), // só o que ainda falta (congela o já pago)
+            ])->filter(fn($i) => $i['qtd'] > 0)->values();
+        @endphp
+        const ITENS = @json($itensJs);
         const brl = v => 'R$ ' + (Number(v) || 0).toFixed(2).replace('.', ',');
-        const feeEl = document.getElementById('service_fee');
-        const fee = () => feeEl ? (parseFloat(feeEl.value) || 0) : 0;
+        // Soma dos itens ainda não congelados e crédito já pago "solto" (acertos sem itens) a abater igualmente
+        const UNFROZEN_SUM = ITENS.reduce((s, it) => s + it.preco * it.qtd, 0);
+        const PREPAGO = Math.max(0, Math.round((UNFROZEN_SUM - RESTANTE) * 100) / 100);
 
         // Divisão igual
         const eqResult = document.getElementById('eq-result');
         const eqBase   = document.getElementById('eq-base');
         function calcEqual() {
             const n = Math.max(1, parseInt(eqPeople.value) || 1);
-            const base = SUBTOTAL + fee();
+            const base = RESTANTE; // divide o que ainda falta, não o total cheio
             eqResult.textContent = brl(base / n);
-            eqBase.textContent = 'Total ' + brl(base) + ' ÷ ' + n + (n > 1 ? ' pessoas' : ' pessoa');
+            eqBase.textContent = (PAGO > 0 ? 'Restante ' : 'Total ') + brl(base) + ' ÷ ' + n + (n > 1 ? ' pessoas' : ' pessoa')
+                + (PAGO > 0 ? ' · já pago ' + brl(PAGO) : '');
         }
         eqPeople.addEventListener('input', calcEqual);
-        if (feeEl) feeEl.addEventListener('input', calcEqual);
         calcEqual();
 
         // Divisão por pessoa (matriz itens × pessoas)
@@ -581,10 +902,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 if (rowSum !== it.qtd) ok = false;
             });
-            document.querySelectorAll('.it-total').forEach(td => td.textContent = brl(tot[td.dataset.person]));
+            const pessoas = document.querySelectorAll('.it-total').length || 1;
+            const desconto = PREPAGO > 0 ? PREPAGO / pessoas : 0;
+            document.querySelectorAll('.it-total').forEach(td => td.textContent = brl((tot[td.dataset.person] || 0) - desconto));
             itWarn.textContent = ok ? '' : '⚠ A soma por item ainda não bate com a quantidade lançada.';
         }
         function build() {
+            if (ITENS.length === 0) {
+                itHead.innerHTML = '';
+                itBody.innerHTML = '<tr><td class="text-center text-muted py-2">Todos os itens já foram acertados.</td></tr>';
+                itFoot.innerHTML = '';
+                return;
+            }
             const n = Math.max(1, Math.min(10, parseInt(itPeople.value) || 1));
             let h = '<th>Item</th><th class="text-end">Unit.</th><th class="text-center">Qtd</th>';
             for (let p = 0; p < n; p++) h += '<th class="text-center">P' + (p + 1) + '</th>';
@@ -596,7 +925,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 return r + '</tr>';
             }).join('');
             let f = '<td colspan="3" class="text-end fw-semibold">Cada pessoa</td>';
-            for (let p = 0; p < n; p++) f += '<td class="text-center fw-bold it-total" data-person="' + p + '" style="color:var(--sh-orange2);">—</td>';
+            for (let p = 0; p < n; p++)
+                f += '<td class="text-center"><div class="fw-bold it-total" data-person="' + p + '" style="color:var(--sh-orange2);">—</div>'
+                   + '<button type="button" class="btn btn-sm btn-success mt-1 py-0 px-1" style="font-size:.7rem;" onclick="registrarPessoa(' + p + ')">Pago</button></td>';
             itFoot.innerHTML = f;
             document.querySelectorAll('.it-alloc').forEach(inp => inp.addEventListener('input', () => {
                 const idx = inp.dataset.item, max = ITENS[idx].qtd;
@@ -609,6 +940,83 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         itPeople.addEventListener('input', build);
         build();
+
+        // ── Impressão da divisão ──
+        const escapeHtml = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+        const body = document.getElementById('divisao-body');
+
+        window.imprimirDivisaoIgual = function () {
+            const n = Math.max(1, parseInt(eqPeople.value) || 1);
+            const base = RESTANTE;
+            let h = '<div class="da-title">Divisão igual</div>';
+            if (PAGO > 0) h += '<div class="ra-meta"><div>Já pago ' + brl(PAGO) + '</div></div>';
+            h += '<div class="ra-meta"><div>' + (PAGO > 0 ? 'Restante ' : 'Total ') + brl(base) + '</div><div>÷ ' + n + (n > 1 ? ' pessoas' : ' pessoa') + '</div></div>';
+            h += '<div style="text-align:center;font-size:8pt;">Cada pessoa paga</div>';
+            h += '<div class="da-big">' + brl(base / n) + '</div>';
+            body.innerHTML = h;
+            document.body.classList.add('print-divisao');
+            window.print();
+        };
+
+        window.imprimirDivisaoPessoa = function () {
+            const n = Math.max(1, Math.min(10, parseInt(itPeople.value) || 1));
+            const desconto = PREPAGO > 0 ? Math.round((PREPAGO / n) * 100) / 100 : 0;
+            let h = '<div class="da-title">Divisão por pessoa</div>';
+            let geral = 0;
+            for (let p = 0; p < n; p++) {
+                const linhas = [];
+                let total = 0;
+                ITENS.forEach((it, idx) => {
+                    const inp = document.querySelector('.it-alloc[data-item="' + idx + '"][data-person="' + p + '"]');
+                    const q = inp ? (parseInt(inp.value) || 0) : 0;
+                    if (q > 0) { linhas.push({ nome: it.nome, q: q, val: q * it.preco }); total += q * it.preco; }
+                });
+                const liquido = total - desconto;
+                geral += liquido;
+                h += '<div class="da-pessoa"><div class="da-nome"><span>Pessoa ' + (p + 1) + '</span><span>' + brl(liquido) + '</span></div>';
+                if (linhas.length === 0) {
+                    h += '<div class="da-linha"><span>—</span><span></span></div>';
+                } else {
+                    linhas.forEach(l => { h += '<div class="da-linha"><span>' + l.q + 'x ' + escapeHtml(l.nome) + '</span><span>' + brl(l.val) + '</span></div>'; });
+                }
+                if (desconto > 0) h += '<div class="da-linha"><span>Crédito já pago</span><span>− ' + brl(desconto) + '</span></div>';
+                h += '</div>';
+            }
+            h += '<div class="da-pessoa"><div class="da-nome"><span>Total geral</span><span>' + brl(geral) + '</span></div></div>';
+            if (PAGO > 0) {
+                h += '<div style="font-size:8pt;text-align:center;margin-top:1.5mm;">Já pago ' + brl(PAGO) + ' · restante ' + brl(RESTANTE) + '.</div>';
+            }
+            body.innerHTML = h;
+            document.body.classList.add('print-divisao');
+            window.print();
+        };
+
+        // ── Enviar uma parte da divisão para o formulário de acerto ──
+        window.registrarParteIgual = function () {
+            const n = Math.max(1, parseInt(eqPeople.value) || 1);
+            const fracao = '1 de ' + n + (n > 1 ? ' pessoas' : ' pessoa') + ' (divisão igual)';
+            preencherAcerto(RESTANTE / n, n > 1 ? '1 de ' + n + ' pessoas' : 'Pagamento',
+                { tipo: 'igual', fracao: fracao });
+        };
+        window.registrarPessoa = function (p) {
+            const itens = [];
+            let itensTotal = 0;
+            ITENS.forEach((it, idx) => {
+                const inp = document.querySelector('.it-alloc[data-item="' + idx + '"][data-person="' + p + '"]');
+                const q = inp ? (parseInt(inp.value) || 0) : 0;
+                if (q > 0) { itens.push({ id: it.id, nome: it.nome, qtd: q, preco: it.preco }); itensTotal += q * it.preco; }
+            });
+            if (itensTotal <= 0) { alert('Atribua itens à Pessoa ' + (p + 1) + ' antes de registrar.'); return; }
+
+            const pessoas = Math.max(1, Math.min(10, parseInt(itPeople.value) || 1));
+            const desconto = PREPAGO > 0 ? Math.round((PREPAGO / pessoas) * 100) / 100 : 0;
+            const valor = Math.round((itensTotal - desconto) * 100) / 100;
+            if (valor < 0.01) { alert('O crédito já pago cobre a parte da Pessoa ' + (p + 1) + '. Nada a registrar.'); return; }
+
+            const det = { tipo: 'pessoa', itens: itens };
+            if (desconto > 0) det.desconto = desconto;
+            preencherAcerto(valor, 'Pessoa ' + (p + 1), det);
+        };
     })();
 
     // ── Atualização automática (polling) da comanda ──

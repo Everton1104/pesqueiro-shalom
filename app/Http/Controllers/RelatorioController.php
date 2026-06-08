@@ -81,10 +81,19 @@ class RelatorioController extends Controller
             ->get();
         $totalItens = (int) $itens->sum('qtd');
 
+        // Lista paginada das comandas do período (com itens e pagamentos para detalhar como foi paga)
+        $listaComandas = Comanda::where('status', 'fechada')
+            ->whereBetween('closed_at', [$start, $end])
+            ->with(['items', 'pagamentos'])
+            ->withCount('items')
+            ->orderByDesc('closed_at')
+            ->paginate(15)
+            ->withQueryString();
+
         return view('relatorios.index', compact(
             'periodo', 'titulo', 'start', 'end', 'prevRef', 'nextRef',
             'faturamento', 'qtdComandas', 'ticketMedio', 'taxaServico',
-            'porPagamento', 'porDia', 'maxDia', 'itens', 'totalItens'
+            'porPagamento', 'porDia', 'maxDia', 'itens', 'totalItens', 'listaComandas'
         ));
     }
 }

@@ -39,6 +39,8 @@ Route::middleware('auth')->group(function () {
     Route::post('comandas/{comanda}/itens',                 [ComandaController::class, 'addItem'])->name('comandas.itens.add');
     Route::patch('comandas/{comanda}/itens/{item}',         [ComandaController::class, 'updateItem'])->name('comandas.itens.update');
     Route::delete('comandas/{comanda}/itens/{item}',        [ComandaController::class, 'removeItem'])->name('comandas.itens.remove');
+    Route::post('comandas/{comanda}/pagamentos',               [ComandaController::class, 'addPagamento'])->name('comandas.pagamentos.add');
+    Route::delete('comandas/{comanda}/pagamentos/{pagamento}',  [ComandaController::class, 'removePagamento'])->name('comandas.pagamentos.remove');
     Route::post('comandas/{comanda}/fechar',                [ComandaController::class, 'fechar'])->name('comandas.fechar');
     Route::post('comandas/{comanda}/cancelar',              [ComandaController::class, 'cancelar'])->name('comandas.cancelar');
     Route::delete('comandas/{comanda}',                     [ComandaController::class, 'destroy'])->name('comandas.destroy');

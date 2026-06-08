@@ -105,7 +105,7 @@
                         <tbody>
                             @foreach($porPagamento as $forma => $dados)
                                 <tr>
-                                    <td>{{ \App\Models\Comanda::PAYMENT_METHODS[$forma] ?? ($forma ?: '—') }}</td>
+                                    <td>{{ $forma ? \App\Models\Comanda::paymentLabel($forma) : '—' }}</td>
                                     <td class="text-center">{{ $dados['qtd'] }}</td>
                                     <td class="text-end fw-semibold">{{ $brl($dados['total']) }}</td>
                                 </tr>
@@ -143,6 +143,56 @@
                 </tbody>
             </table>
         </div>
+    </div>
+
+    {{-- Comandas do período --}}
+    <div class="card mb-5">
+        <div class="card-header fw-bold d-flex align-items-center justify-content-between">
+            <span>Comandas do período <span class="badge bg-secondary ms-1">{{ $listaComandas->total() }}</span></span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Comanda</th>
+                        <th>Fechada</th>
+                        <th class="text-center">Itens</th>
+                        <th>Pagamento</th>
+                        <th class="text-end">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($listaComandas as $c)
+                        <tr>
+                            <td>
+                                <a href="{{ route('comandas.show', $c) }}" class="fw-semibold text-decoration-none">{{ $c->codigo }}</a>
+                                @if($c->cliente)
+                                    <div class="text-muted small">{{ $c->cliente }}</div>
+                                @endif
+                            </td>
+                            <td class="text-nowrap">{{ $c->closed_at?->format('d/m H:i') }}</td>
+                            <td class="text-center">{{ $c->items_count }}</td>
+                            <td>
+                                <span class="badge bg-light text-dark border">{{ \App\Models\Comanda::paymentLabel($c->payment_method) }}</span>
+                                @if($c->pagamentos->count() > 1 || $c->payment_method === \App\Models\Comanda::PAYMENT_MISTO)
+                                    <div class="text-muted small mt-1">
+                                        @foreach($c->pagamentos as $pg)
+                                            <div>{{ $pg->method_label }} — {{ $brl($pg->valor) }}</div>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </td>
+                            <td class="text-end fw-semibold">{{ $brl($c->total) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @if($listaComandas->hasPages())
+            <div class="card-footer">
+                {{ $listaComandas->links() }}
+            </div>
+        @endif
     </div>
     @endif
 

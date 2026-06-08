@@ -105,7 +105,7 @@
                     <tr>
                         <td class="fw-semibold">{{ $comanda->cliente }}</td>
                         <td><span class="badge bg-light text-dark border font-monospace">{{ $comanda->codigo }}</span></td>
-                        <td>{{ \App\Models\Comanda::PAYMENT_METHODS[$comanda->payment_method] ?? '—' }}</td>
+                        <td>{{ \App\Models\Comanda::paymentLabel($comanda->payment_method) }}</td>
                         <td class="text-end fw-semibold">{{ $comanda->total_formatted }}</td>
                         <td class="text-muted small">{{ optional($comanda->closed_at)->format('d/m H:i') }}</td>
                         <td class="text-end">

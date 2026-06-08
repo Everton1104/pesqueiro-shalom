@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CardapioItem;
 use App\Models\Comanda;
 use App\Models\ComandaItem;
+use App\Models\ComandaPagamento;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -82,7 +83,7 @@ class ComandaController extends Controller
 
     public function show(Comanda $comanda)
     {
-        $comanda->load('items.cardapioItem');
+        $comanda->load('items.cardapioItem', 'pagamentos.user');
 
         // Itens vendáveis do cardápio
         $vendaveis = CardapioItem::whereIn('status', ['active', 'unavailable'])->orderBy('sort_order')->get();
@@ -173,6 +174,13 @@ class ComandaController extends Controller
         abort_unless($item->comanda_id === $comanda->id, 404);
 
         $data = $request->validate(['quantity' => 'required|integer|min:1|max:99']);
+
+        // Congela o que já foi acertado: não dá para reduzir abaixo da quantidade já paga
+        $jaPago = $comanda->itemPaidQuantities()[$item->id] ?? 0;
+        if ($jaPago > 0 && $data['quantity'] < $jaPago) {
+            return back()->with('error', "Não dá para reduzir abaixo do que já foi acertado ({$jaPago}x).");
+        }
+
         $item->update($data);
 
         return back()->with('status', 'Quantidade atualizada.');
@@ -183,31 +191,111 @@ class ComandaController extends Controller
         $this->garantirAberta($comanda);
         abort_unless($item->comanda_id === $comanda->id, 404);
 
+        // Congela o que já foi acertado: item já pago não pode ser removido
+        if (($comanda->itemPaidQuantities()[$item->id] ?? 0) > 0) {
+            return back()->with('error', 'Item já acertado não pode ser removido. Estorne o acerto antes.');
+        }
+
         $item->delete();
 
         return back()->with('status', 'Item removido da comanda.');
+    }
+
+    // Registra um pagamento parcial (acerto) numa comanda aberta
+    public function addPagamento(Request $request, Comanda $comanda)
+    {
+        $this->garantirAberta($comanda);
+
+        if ($comanda->items()->count() === 0) {
+            return back()->with('error', 'Não há itens para acertar nesta comanda.');
+        }
+
+        $restante = $comanda->restante;
+
+        $data = $request->validate([
+            'descricao'      => 'nullable|string|max:60',
+            'valor'          => 'required|numeric|min:0.01|max:' . max(0.01, $restante),
+            'payment_method' => 'required|in:' . implode(',', array_keys(Comanda::PAYMENT_METHODS)),
+            'detalhe'        => 'nullable|string',
+        ], [
+            'valor.max' => 'O valor não pode ser maior que o restante (' . $comanda->restante_formatted . ').',
+        ]);
+
+        // Detalhe da divisão (itens da pessoa ou fração da divisão igual)
+        $detalhe = null;
+        if (!empty($data['detalhe'])) {
+            $decoded = json_decode($data['detalhe'], true);
+            if (is_array($decoded)) {
+                $detalhe = $decoded;
+            }
+        }
+
+        // Congela itens já acertados: não permite dividir de novo o que já foi pago
+        if ($detalhe && ($detalhe['tipo'] ?? null) === 'pessoa') {
+            $jaPagos = $comanda->itemPaidQuantities();
+            foreach ($detalhe['itens'] ?? [] as $it) {
+                $itemId = $it['id'] ?? null;
+                $qtd    = (int) ($it['qtd'] ?? 0);
+                $item   = $itemId ? $comanda->items()->find($itemId) : null;
+                if (!$item) {
+                    continue;
+                }
+                $restanteItem = $item->quantity - ($jaPagos[$itemId] ?? 0);
+                if ($qtd > $restanteItem) {
+                    return back()->with('error', 'Esses itens já foram acertados. Atualize a divisão.');
+                }
+            }
+        }
+
+        $comanda->pagamentos()->create([
+            'descricao'      => $data['descricao'] ?? null,
+            'detalhe'        => $detalhe,
+            'valor'          => $data['valor'],
+            'payment_method' => $data['payment_method'],
+            'user_id'        => auth()->id(),
+        ]);
+
+        $comanda->refresh();
+
+        return back()->with('status', 'Acerto de ' . Comanda::money($data['valor']) . ' registrado. Restante: ' . $comanda->restante_formatted . '.');
+    }
+
+    // Remove um pagamento parcial (estorno) de uma comanda aberta
+    public function removePagamento(Comanda $comanda, ComandaPagamento $pagamento)
+    {
+        $this->garantirAberta($comanda);
+        abort_unless($pagamento->comanda_id === $comanda->id, 404);
+
+        $pagamento->delete();
+
+        return back()->with('status', 'Acerto estornado.');
     }
 
     public function fechar(Request $request, Comanda $comanda)
     {
         $this->garantirAberta($comanda);
 
-        $data = $request->validate([
-            'payment_method' => 'required|in:' . implode(',', array_keys(Comanda::PAYMENT_METHODS)),
-            'service_fee'    => 'nullable|numeric|min:0',
-        ]);
-
         if ($comanda->items()->count() === 0) {
             return back()->with('error', 'Não é possível fechar uma comanda sem itens.');
         }
 
-        $fee = (float) ($data['service_fee'] ?? 0);
+        // Todo o pagamento passa pelos acertos da "Conta da mesa": só fecha quando zerar o restante.
+        if ($comanda->restante > 0) {
+            return back()->with('error', 'Registre os acertos até zerar o restante (' . $comanda->restante_formatted . ') antes de fechar.');
+        }
+
+        // Forma de pagamento da comanda: única quando todos os acertos batem,
+        // ou "misto" quando o pagamento foi quebrado em formas diferentes.
+        $formasUsadas = $comanda->pagamentos()->pluck('payment_method')->unique()->values();
+        $formaComanda = $formasUsadas->count() > 1
+            ? Comanda::PAYMENT_MISTO
+            : $formasUsadas->first();
 
         $comanda->update([
             'status'         => 'fechada',
-            'payment_method' => $data['payment_method'],
-            'service_fee'    => $fee,
-            'total'          => $comanda->subtotal + $fee,
+            'payment_method' => $formaComanda,
+            'service_fee'    => 0,
+            'total'          => $comanda->subtotal, // taxa de serviço não é mais aplicada
             'closed_at'      => now(),
         ]);
 

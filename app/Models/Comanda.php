@@ -30,9 +30,27 @@ class Comanda extends Model
         'debito'   => 'Débito',
     ];
 
+    // Forma derivada (não selecionável): comanda quitada com acertos em formas diferentes
+    const PAYMENT_MISTO = 'misto';
+
+    // Rótulo de uma forma de pagamento, incluindo "Misto"
+    public static function paymentLabel(?string $key): string
+    {
+        if ($key === self::PAYMENT_MISTO) {
+            return 'Misto';
+        }
+
+        return self::PAYMENT_METHODS[$key] ?? '—';
+    }
+
     public function items()
     {
         return $this->hasMany(ComandaItem::class);
+    }
+
+    public function pagamentos()
+    {
+        return $this->hasMany(ComandaPagamento::class)->latest();
     }
 
     public function user()
@@ -73,6 +91,60 @@ class Comanda extends Model
         return self::money($this->service_fee);
     }
 
+    // Total já acertado em pagamentos parciais
+    public function getPagoAttribute(): float
+    {
+        $pgs = $this->relationLoaded('pagamentos') ? $this->pagamentos : $this->pagamentos()->get();
+        return (float) $pgs->sum('valor');
+    }
+
+    public function getPagoFormattedAttribute(): string
+    {
+        return self::money($this->pago);
+    }
+
+    // Quanto ainda falta acertar (base: subtotal + taxa de serviço − já pago)
+    public function getRestanteAttribute(): float
+    {
+        $base = $this->status === 'aberta'
+            ? $this->subtotal + (float) $this->service_fee
+            : (float) $this->total;
+
+        return round(max(0, $base - $this->pago), 2);
+    }
+
+    public function getRestanteFormattedAttribute(): string
+    {
+        return self::money($this->restante);
+    }
+
+    public function getTemPagamentosParciaisAttribute(): bool
+    {
+        return $this->pago > 0;
+    }
+
+    // Quantidades já acertadas por item (comanda_item_id => qtd), vindas do detalhe dos pagamentos "por pessoa"
+    public function itemPaidQuantities(): array
+    {
+        $pgs = $this->relationLoaded('pagamentos') ? $this->pagamentos : $this->pagamentos()->get();
+        $map = [];
+
+        foreach ($pgs as $pg) {
+            $det = $pg->detalhe;
+            if (!is_array($det) || ($det['tipo'] ?? null) !== 'pessoa') {
+                continue;
+            }
+            foreach ($det['itens'] ?? [] as $it) {
+                $id = $it['id'] ?? null;
+                if ($id) {
+                    $map[$id] = ($map[$id] ?? 0) + (int) ($it['qtd'] ?? 0);
+                }
+            }
+        }
+
+        return $map;
+    }
+
     public static function money($value): string
     {
         return 'R$ ' . number_format((float) $value, 2, ',', '.');
@@ -83,7 +155,11 @@ class Comanda extends Model
     {
         $itens = $this->relationLoaded('items') ? $this->items : $this->items()->get();
         $valor = $itens->reduce(fn($c, $i) => $c + ($i->quantity * (float) $i->unit_price), 0.0);
+        $pgs   = $this->relationLoaded('pagamentos') ? $this->pagamentos : $this->pagamentos()->get();
 
-        return implode('|', [$this->status, $itens->count(), $itens->sum('quantity'), number_format($valor, 2, '.', '')]);
+        return implode('|', [
+            $this->status, $itens->count(), $itens->sum('quantity'), number_format($valor, 2, '.', ''),
+            $pgs->count(), number_format((float) $pgs->sum('valor'), 2, '.', ''),
+        ]);
     }
 }
