@@ -38,4 +38,10 @@ class CardapioItem extends Model
     {
         return 'R$ ' . number_format($this->price, 2, ',', '.');
     }
+
+    // Item que exige preparo na cozinha (categorias PORÇÕES / COMIDA) — usado nas Fichas
+    public function getRequerPreparoAttribute(): bool
+    {
+        return in_array($this->category, Ficha::COZINHA_CATEGORIES, true);
+    }
 }

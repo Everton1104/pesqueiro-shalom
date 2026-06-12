@@ -354,7 +354,7 @@
                                               class="d-inline-flex align-items-center gap-1">
                                             @csrf @method('PATCH')
                                             <input type="number" name="quantity" value="{{ $item->quantity }}"
-                                                   min="{{ max(1, $itemPago) }}" max="99" class="form-control form-control-sm text-center"
+                                                   min="{{ max(1, $itemPago) }}" max="999" class="form-control form-control-sm text-center"
                                                    style="width:64px" onchange="this.form.submit()">
                                         </form>
                                     @else
@@ -1043,6 +1043,14 @@ document.addEventListener('DOMContentLoaded', function () {
     @if(session('print'))
     // Comanda recém-criada: abre a impressão e permanece na tela da comanda
     setTimeout(function () { window.print(); }, 400);
+    @endif
+
+    @if(session('scroll') === 'fechamento')
+    // Após registrar/estornar um acerto: rola até o fechamento (em vez de voltar ao topo)
+    setTimeout(function () {
+        const alvo = document.getElementById('acertos-card');
+        if (alvo) alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
     @endif
 });
 </script>

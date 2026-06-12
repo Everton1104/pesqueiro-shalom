@@ -33,7 +33,7 @@
 
 <div class="mb-3">
     <label class="form-label fw-semibold">
-        Foto do produto <span class="text-muted fw-normal">(opcional, JPG/PNG/WEBP, máx 2 MB)</span>
+        Foto do produto <span class="text-muted fw-normal">(opcional, JPG/PNG/WEBP, máx 12 MB)</span>
     </label>
 
     @if($item?->image)

@@ -44,6 +44,15 @@
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('comandas.*') ? 'active' : '' }}" href="{{ route('comandas.index') }}">Comandas</a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('fichas.*') ? 'active' : '' }}" href="{{ route('fichas.index') }}">Fichas</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('balcao.*') ? 'active' : '' }}" href="{{ route('balcao.index') }}">Balcão</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('cozinha.*') ? 'active' : '' }}" href="{{ route('cozinha.index') }}">Cozinha</a>
+                            </li>
                             @if(auth()->user()->is_admin)
                             <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('relatorios.*') ? 'active' : '' }}" href="{{ route('relatorios.index') }}">Relatórios</a>
@@ -163,5 +172,21 @@
         })();
     </script>
     @endauth
+
+    {{-- Auto-dismiss das mensagens flash (.alert-dismissible) após 5s — avisos fixos da tela não têm essa classe --}}
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.alert-dismissible').forEach(function (el) {
+            setTimeout(function () {
+                if (window.bootstrap && bootstrap.Alert) {
+                    bootstrap.Alert.getOrCreateInstance(el).close();
+                } else {
+                    el.classList.remove('show');
+                    setTimeout(function () { el.remove(); }, 200);
+                }
+            }, 5000);
+        });
+    });
+    </script>
 </body>
 </html>

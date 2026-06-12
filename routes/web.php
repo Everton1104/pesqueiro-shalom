@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Controllers\BalcaoController;
 use App\Http\Controllers\CardapioController;
 use App\Http\Controllers\ComandaController;
+use App\Http\Controllers\CozinhaController;
+use App\Http\Controllers\FichaController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\RelatorioController;
 use App\Models\CardapioCategory;
@@ -44,6 +47,21 @@ Route::middleware('auth')->group(function () {
     Route::post('comandas/{comanda}/fechar',                [ComandaController::class, 'fechar'])->name('comandas.fechar');
     Route::post('comandas/{comanda}/cancelar',              [ComandaController::class, 'cancelar'])->name('comandas.cancelar');
     Route::delete('comandas/{comanda}',                     [ComandaController::class, 'destroy'])->name('comandas.destroy');
+
+    // ── Fichas (caixa pré-pago de evento) ──
+    Route::resource('fichas', FichaController::class)->only(['index', 'store', 'show']);
+    Route::post('fichas/{ficha}/cancelar', [FichaController::class, 'cancelar'])->name('fichas.cancelar');
+    Route::delete('fichas/{ficha}',        [FichaController::class, 'destroy'])->name('fichas.destroy');
+
+    // ── Balcão (retirada de prontos via QR) ──
+    Route::get('balcao',                  [BalcaoController::class, 'index'])->name('balcao.index');
+    Route::get('balcao/buscar',           [BalcaoController::class, 'buscar'])->name('balcao.buscar'); // JSON por código
+    Route::post('balcao/{ficha}/entregar', [BalcaoController::class, 'entregar'])->name('balcao.entregar');
+
+    // ── Cozinha (fila de preparo) ──
+    Route::get('cozinha',                  [CozinhaController::class, 'index'])->name('cozinha.index');
+    Route::get('cozinha-fila',             [CozinhaController::class, 'fila'])->name('cozinha.fila'); // polling
+    Route::patch('cozinha/{ficha}/concluir', [CozinhaController::class, 'concluir'])->name('cozinha.concluir');
 
     // ── Relatórios ──
     Route::get('relatorios', [RelatorioController::class, 'index'])->name('relatorios.index');

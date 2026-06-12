@@ -247,6 +247,32 @@
             transform: scale(1.1) rotate(-2deg);
             box-shadow: 0 4px 16px rgba(217,119,6,.3);
         }
+        .item-thumb img.zoomable { cursor: zoom-in; }
+
+        /* ── LIGHTBOX (zoom ao clicar na foto) ── */
+        .lightbox {
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0,0,0,.88);
+            display: none; align-items: center; justify-content: center;
+            padding: 1.5rem; opacity: 0;
+            transition: opacity .2s ease;
+            -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+        }
+        .lightbox.open { display: flex; opacity: 1; }
+        .lightbox-inner { text-align: center; max-width: 94vw; }
+        .lightbox img {
+            max-width: 94vw; max-height: 80vh; object-fit: contain;
+            border-radius: 14px; box-shadow: 0 12px 48px rgba(0,0,0,.6);
+            transform: scale(.85); transition: transform .25s cubic-bezier(.22,1,.36,1);
+        }
+        .lightbox.open img { transform: scale(1); }
+        .lightbox-cap { color: #fff; margin-top: .85rem; font-weight: 700; font-size: 1.05rem; }
+        .lightbox-close {
+            position: absolute; top: .8rem; right: 1.1rem;
+            background: none; border: none; color: #fff;
+            font-size: 2.6rem; line-height: 1; cursor: pointer; opacity: .85;
+        }
+        .lightbox-close:hover { opacity: 1; }
 
         /* ── ITEM INFO ── */
         .item-info { flex: 1; min-width: 0; }
@@ -375,7 +401,7 @@ $emojis = [
                     <div class="item-row {{ $item->status === 'unavailable' ? 'is-unavailable' : ($item->status === 'coming_soon' ? 'is-coming-soon' : '') }}">
                         <div class="item-thumb">
                             @if($item->image)
-                                <img src="{{ Storage::url($item->image) }}" alt="{{ $item->name }}" loading="lazy">
+                                <img src="{{ Storage::url($item->image) }}" alt="{{ $item->name }}" loading="lazy" class="zoomable">
                             @else
                                 {{ $emojis[$category] ?? '🍴' }}
                             @endif
@@ -405,6 +431,47 @@ $emojis = [
 <footer>
     &copy; {{ date('Y') }} {{ config('app.name', 'Bar Shalom') }} &mdash; Todos os direitos reservados
 </footer>
+
+{{-- Lightbox: zoom ao tocar na foto de um item --}}
+<div id="lightbox" class="lightbox" aria-hidden="true">
+    <button id="lightbox-close" class="lightbox-close" aria-label="Fechar">&times;</button>
+    <div class="lightbox-inner">
+        <img id="lightbox-img" src="" alt="">
+        <div id="lightbox-cap" class="lightbox-cap"></div>
+    </div>
+</div>
+
+<script>
+/* ── Lightbox das fotos do cardápio ── */
+(function () {
+    const lb    = document.getElementById('lightbox');
+    const lbImg = document.getElementById('lightbox-img');
+    const lbCap = document.getElementById('lightbox-cap');
+
+    function abrir(src, nome) {
+        lbImg.src = src;
+        lbImg.alt = nome || '';
+        lbCap.textContent = nome || '';
+        lb.classList.add('open');
+        lb.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+    function fechar() {
+        lb.classList.remove('open');
+        lb.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+        setTimeout(() => { lbImg.src = ''; }, 200);
+    }
+
+    document.querySelectorAll('.item-thumb img.zoomable').forEach(img => {
+        img.addEventListener('click', () => abrir(img.src, img.alt));
+    });
+
+    document.getElementById('lightbox-close').addEventListener('click', fechar);
+    lb.addEventListener('click', e => { if (e.target === lb) fechar(); }); // toca no fundo fecha
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && lb.classList.contains('open')) fechar(); });
+})();
+</script>
 
 <script>
 (function () {

@@ -156,14 +156,27 @@ class ComandaController extends Controller
         ]);
 
         $item = CardapioItem::findOrFail($data['cardapio_item_id']);
+        $obs  = trim($data['observacao'] ?? '') ?: null;
 
-        $comanda->items()->create([
-            'cardapio_item_id' => $item->id,
-            'name'             => $item->name,
-            'unit_price'       => $item->price,
-            'quantity'         => $data['quantity'],
-            'observacao'       => $data['observacao'] ?? null,
-        ]);
+        // Agrupa com um lançamento igual já existente (mesmo produto, preço e observação)
+        $existente = $comanda->items()
+            ->where('cardapio_item_id', $item->id)
+            ->where('unit_price', $item->price)
+            ->when($obs === null, fn($q) => $q->whereNull('observacao'))
+            ->when($obs !== null, fn($q) => $q->where('observacao', $obs))
+            ->first();
+
+        if ($existente) {
+            $existente->increment('quantity', $data['quantity']);
+        } else {
+            $comanda->items()->create([
+                'cardapio_item_id' => $item->id,
+                'name'             => $item->name,
+                'unit_price'       => $item->price,
+                'quantity'         => $data['quantity'],
+                'observacao'       => $obs,
+            ]);
+        }
 
         return back()->with('status', $data['quantity'] . 'x ' . $item->name . ' adicionado.');
     }
@@ -173,7 +186,7 @@ class ComandaController extends Controller
         $this->garantirAberta($comanda);
         abort_unless($item->comanda_id === $comanda->id, 404);
 
-        $data = $request->validate(['quantity' => 'required|integer|min:1|max:99']);
+        $data = $request->validate(['quantity' => 'required|integer|min:1|max:999']);
 
         // Congela o que já foi acertado: não dá para reduzir abaixo da quantidade já paga
         $jaPago = $comanda->itemPaidQuantities()[$item->id] ?? 0;
@@ -257,7 +270,9 @@ class ComandaController extends Controller
 
         $comanda->refresh();
 
-        return back()->with('status', 'Acerto de ' . Comanda::money($data['valor']) . ' registrado. Restante: ' . $comanda->restante_formatted . '.');
+        return back()
+            ->with('status', 'Acerto de ' . Comanda::money($data['valor']) . ' registrado. Restante: ' . $comanda->restante_formatted . '.')
+            ->with('scroll', 'fechamento');
     }
 
     // Remove um pagamento parcial (estorno) de uma comanda aberta
@@ -268,7 +283,7 @@ class ComandaController extends Controller
 
         $pagamento->delete();
 
-        return back()->with('status', 'Acerto estornado.');
+        return back()->with('status', 'Acerto estornado.')->with('scroll', 'fechamento');
     }
 
     public function fechar(Request $request, Comanda $comanda)

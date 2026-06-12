@@ -6,6 +6,12 @@
     .material-symbols-outlined { font-variation-settings: 'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20; vertical-align: middle; font-size: 18px; line-height: 1; }
     .scan-box { border: 2px dashed var(--sh-orange, #d97706); border-radius: 12px; background: rgba(217,119,6,.07); }
     .scan-box .form-label { color: var(--sh-orange2, #f59e0b) !important; }
+    .btn-qr { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+              line-height:1; padding:.4rem .55rem; }
+    .btn-qr .material-symbols-outlined { font-size:26px; }
+    .btn-qr small { font-size:.6rem; font-weight:700; letter-spacing:.02em; }
+    #qr-reader { width:100%; max-width:340px; margin:0 auto; border-radius:12px; overflow:hidden; }
+    #qr-reader video { border-radius:12px; }
 </style>
 
 <div class="container-lg">
@@ -33,15 +39,31 @@
         </div>
     @endif
 
-    {{-- Leitor de QR Code (leitor USB digita o código e dá Enter) --}}
-    <form action="{{ route('comandas.scan') }}" method="GET" class="scan-box p-3 mb-4 d-flex align-items-center gap-3">
-        <span class="material-symbols-outlined text-primary" style="font-size:28px;">qr_code_scanner</span>
-        <div class="flex-grow-1">
-            <label class="form-label mb-1 fw-semibold small text-primary">Ler QR ou buscar por nome</label>
-            <input type="text" name="codigo" id="scan-input" class="form-control" value="{{ $q ?? '' }}"
-                   placeholder="Aproxime o QR do leitor, ou digite o código / nome do cliente…" autofocus autocomplete="off">
+    {{-- Leitor de QR Code (leitor USB digita o código e dá Enter; ou câmera do celular) --}}
+    <form action="{{ route('comandas.scan') }}" method="GET" id="scan-form" class="scan-box p-3 mb-4">
+        <div class="d-flex align-items-center gap-3">
+            <span class="material-symbols-outlined text-primary d-none d-sm-inline" style="font-size:28px;">qr_code_scanner</span>
+            <div class="flex-grow-1">
+                <label class="form-label mb-1 fw-semibold small text-primary">Ler QR ou buscar por nome</label>
+                <input type="text" name="codigo" id="scan-input" class="form-control" value="{{ $q ?? '' }}"
+                       placeholder="Aproxime o QR do leitor, ou digite o código / nome do cliente…" autofocus autocomplete="off">
+            </div>
+            {{-- Botão da câmera: abre o leitor de QR pelo celular --}}
+            <button type="button" id="qr-toggle" class="btn btn-outline-primary btn-qr" title="Ler QR com a câmera">
+                <span class="material-symbols-outlined">qr_code_2</span>
+                <small>Ler QR</small>
+            </button>
+            <button class="btn btn-primary">Abrir</button>
         </div>
-        <button class="btn btn-primary">Abrir</button>
+
+        {{-- Câmera colapsada — só aparece ao tocar em "Ler QR" --}}
+        <div id="qr-camera" class="d-none mt-3 text-center">
+            <div id="qr-reader"></div>
+            <div class="text-muted small mt-2" id="qr-status">Aponte a câmera para o QR da comanda…</div>
+            <button type="button" id="qr-close" class="btn btn-sm btn-outline-secondary mt-2">
+                <span class="material-symbols-outlined">close</span> Fechar câmera
+            </button>
+        </div>
     </form>
 
     {{-- Comandas abertas --}}
@@ -153,6 +175,7 @@
     </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script>
 (function () {
     // Mantém o foco no campo de leitura para o leitor de QR funcionar como teclado
@@ -173,6 +196,8 @@
 
     document.addEventListener('click', (e) => {
         if (modalOpen) return;
+        const cam = document.getElementById('qr-camera');
+        if (cam && !cam.classList.contains('d-none')) return; // câmera aberta: não rouba o foco
         if (e.target.closest('a, button, input, select, textarea')) return;
         scan && scan.focus();
     });
@@ -227,6 +252,61 @@
         } catch (e) { /* silencioso */ }
     }
     setInterval(poll, 8000);
+
+    // ── Leitor de QR pela câmera do celular ──
+    const qrToggle = document.getElementById('qr-toggle');
+    const qrCamera = document.getElementById('qr-camera');
+    const qrClose  = document.getElementById('qr-close');
+    const qrStatus = document.getElementById('qr-status');
+    const scanForm = document.getElementById('scan-form');
+    let html5Qr = null;
+    let lendo = false;
+
+    async function pararCamera() {
+        if (html5Qr && lendo) {
+            try { await html5Qr.stop(); } catch (e) { /* já parada */ }
+        }
+        lendo = false;
+        qrCamera.classList.add('d-none');
+    }
+
+    async function abrirCamera() {
+        if (typeof Html5Qrcode === 'undefined') {
+            alert('Não foi possível carregar o leitor de QR. Verifique sua conexão.');
+            return;
+        }
+        qrCamera.classList.remove('d-none');
+        qrStatus.textContent = 'Aponte a câmera para o QR da comanda…';
+        if (!html5Qr) html5Qr = new Html5Qrcode('qr-reader');
+
+        try {
+            lendo = true;
+            await html5Qr.start(
+                { facingMode: 'environment' },
+                { fps: 10, qrbox: { width: 220, height: 220 } },
+                async (texto) => {
+                    if (!lendo) return;
+                    lendo = false;                 // evita leituras múltiplas
+                    qrStatus.textContent = 'Comanda lida! Abrindo…';
+                    try { await html5Qr.stop(); } catch (e) {}
+                    scan.value = (texto || '').trim();
+                    scanForm.submit();             // route comandas.scan resolve o código
+                },
+                () => { /* frame sem QR — silencioso */ }
+            );
+        } catch (e) {
+            lendo = false;
+            qrStatus.textContent = 'Não foi possível acessar a câmera. Permita o acesso e tente de novo.';
+        }
+    }
+
+    if (qrToggle) {
+        qrToggle.addEventListener('click', () => {
+            if (qrCamera.classList.contains('d-none')) abrirCamera();
+            else pararCamera();
+        });
+    }
+    if (qrClose) qrClose.addEventListener('click', pararCamera);
 })();
 </script>
 @endsection

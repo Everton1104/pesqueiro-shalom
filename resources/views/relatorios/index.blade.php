@@ -48,7 +48,11 @@
         <div class="col-6 col-lg-3">
             <div class="card metric h-100"><div class="card-body d-flex align-items-center gap-3">
                 <div class="ic"><span class="material-symbols-outlined">payments</span></div>
-                <div><div class="val" style="color:var(--sh-orange2);">{{ $brl($faturamento) }}</div><div class="lbl">Faturamento</div></div>
+                <div>
+                    <div class="val" style="color:var(--sh-orange2);">{{ $brl($faturamento) }}</div>
+                    <div class="lbl">Faturamento</div>
+                    <div class="text-muted" style="font-size:.66rem;">Comandas {{ $brl($fatComandas) }} · Fichas {{ $brl($fatFichas) }}</div>
+                </div>
             </div></div>
         </div>
         <div class="col-6 col-lg-3">
@@ -59,8 +63,8 @@
         </div>
         <div class="col-6 col-lg-3">
             <div class="card metric h-100"><div class="card-body d-flex align-items-center gap-3">
-                <div class="ic"><span class="material-symbols-outlined">trending_up</span></div>
-                <div><div class="val">{{ $brl($ticketMedio) }}</div><div class="lbl">Ticket médio</div></div>
+                <div class="ic"><span class="material-symbols-outlined">confirmation_number</span></div>
+                <div><div class="val">{{ $qtdFichas }}</div><div class="lbl">Fichas pagas</div></div>
             </div></div>
         </div>
         <div class="col-6 col-lg-3">
@@ -71,9 +75,9 @@
         </div>
     </div>
 
-    @if($qtdComandas === 0)
+    @if($qtdVendas === 0)
         <div class="card"><div class="card-body text-center text-muted py-5">
-            Nenhuma comanda fechada neste período.
+            Nenhuma venda (comanda ou ficha) neste período.
         </div></div>
     @else
     <div class="row g-4 mb-4">
@@ -112,7 +116,7 @@
                             @endforeach
                         </tbody>
                         <tfoot class="table-light">
-                            <tr><td class="fw-bold">Total</td><td class="text-center fw-bold">{{ $qtdComandas }}</td><td class="text-end fw-bold">{{ $brl($faturamento) }}</td></tr>
+                            <tr><td class="fw-bold">Total</td><td class="text-center fw-bold">{{ $qtdVendas }}</td><td class="text-end fw-bold">{{ $brl($faturamento) }}</td></tr>
                         </tfoot>
                     </table>
                 </div>
@@ -192,6 +196,49 @@
             <div class="card-footer">
                 {{ $listaComandas->links() }}
             </div>
+        @endif
+    </div>
+
+    {{-- Fichas do período --}}
+    <div class="card mb-5">
+        <div class="card-header fw-bold d-flex align-items-center justify-content-between">
+            <span>Fichas do período <span class="badge bg-secondary ms-1">{{ $listaFichas->total() }}</span></span>
+        </div>
+        @if($listaFichas->total() === 0)
+            <div class="card-body text-center text-muted py-4">Nenhuma ficha paga neste período.</div>
+        @else
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Ficha</th>
+                        <th>Paga em</th>
+                        <th class="text-center">Itens</th>
+                        <th>Pagamento</th>
+                        <th>Status</th>
+                        <th class="text-end">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($listaFichas as $f)
+                        <tr>
+                            <td>
+                                <a href="{{ route('fichas.show', $f) }}" class="fw-semibold text-decoration-none">{{ $f->codigo }}</a>
+                                @if($f->cliente)<div class="text-muted small">{{ $f->cliente }}</div>@endif
+                            </td>
+                            <td class="text-nowrap">{{ ($f->paid_at ?? $f->created_at)->format('d/m H:i') }}</td>
+                            <td class="text-center">{{ $f->items_count }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ \App\Models\Comanda::paymentLabel($f->payment_method) }}</span></td>
+                            <td><span class="badge {{ $f->status_badge['class'] }}">{{ $f->status_badge['label'] }}</span></td>
+                            <td class="text-end fw-semibold">{{ $brl($f->total) }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+        @if($listaFichas->hasPages())
+            <div class="card-footer">{{ $listaFichas->links() }}</div>
+        @endif
         @endif
     </div>
     @endif
