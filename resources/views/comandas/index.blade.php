@@ -46,7 +46,7 @@
             <div class="flex-grow-1">
                 <label class="form-label mb-1 fw-semibold small text-primary">Ler QR ou buscar por nome</label>
                 <input type="text" name="codigo" id="scan-input" class="form-control" value="{{ $q ?? '' }}"
-                       placeholder="Aproxime o QR do leitor, ou digite o código / nome do cliente…" autofocus autocomplete="off">
+                       placeholder="Aproxime o QR do leitor, ou digite o código / nome do cliente…" autocomplete="off">
             </div>
             {{-- Botão da câmera: abre o leitor de QR pelo celular --}}
             <button type="button" id="qr-toggle" class="btn btn-outline-primary btn-qr" title="Ler QR com a câmera">
@@ -54,6 +54,12 @@
                 <small>Ler QR</small>
             </button>
             <button class="btn btn-primary">Abrir</button>
+        </div>
+
+        {{-- Alternar modo: scan por câmera × digitação (salvo na sessão) --}}
+        <div class="form-check form-switch mt-2 mb-0">
+            <input class="form-check-input" type="checkbox" role="switch" id="scan-mode-toggle">
+            <label class="form-check-label small" for="scan-mode-toggle" id="scan-mode-label">Modo scan (câmera)</label>
         </div>
 
         {{-- Câmera colapsada — só aparece ao tocar em "Ler QR" --}}
@@ -178,13 +184,19 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script>
 (function () {
-    // Mantém o foco no campo de leitura para o leitor de QR funcionar como teclado
     const scan = document.getElementById('scan-input');
     const modalEl = document.getElementById('novaComandaModal');
     const clienteInput = document.getElementById('cliente-input');
+
+    // Modo de leitura: scan (câmera) × digitação (autofocus). Default + persistência na sessão.
+    const savedScanMode = @json(session('scan_mode'));
+    let scanMode = (savedScanMode === null || savedScanMode === undefined) ? true : !!savedScanMode;
+    // Foca o campo só no modo digitação (ativa o autofocus/teclado)
+    const focarScan = () => { if (!scanMode && scan) scan.focus(); };
+
     let modalOpen = false;
     modalEl.addEventListener('shown.bs.modal', () => { modalOpen = true; clienteInput && clienteInput.focus(); });
-    modalEl.addEventListener('hidden.bs.modal', () => { modalOpen = false; scan && scan.focus(); });
+    modalEl.addEventListener('hidden.bs.modal', () => { modalOpen = false; focarScan(); });
 
     // Atalho: TAB abre o modal de nova comanda e foca o nome
     document.addEventListener('keydown', (e) => {
@@ -199,7 +211,7 @@
         const cam = document.getElementById('qr-camera');
         if (cam && !cam.classList.contains('d-none')) return; // câmera aberta: não rouba o foco
         if (e.target.closest('a, button, input, select, textarea')) return;
-        scan && scan.focus();
+        focarScan();
     });
 
     // ── Filtro instantâneo das comandas abertas por nome/código ──
@@ -276,6 +288,7 @@
             return;
         }
         qrCamera.classList.remove('d-none');
+        if (scan) scan.blur(); // fecha o teclado pra não cobrir a câmera
         qrStatus.textContent = 'Aponte a câmera para o QR da comanda…';
         if (!html5Qr) html5Qr = new Html5Qrcode('qr-reader');
 
@@ -307,6 +320,40 @@
         });
     }
     if (qrClose) qrClose.addEventListener('click', pararCamera);
+
+    // ── Checkbox: modo scan (câmera) × digitação (teclado), salvo na sessão ──
+    const modeToggle = document.getElementById('scan-mode-toggle');
+    const modeLabel  = document.getElementById('scan-mode-label');
+
+    function aplicarModo() {
+        if (modeToggle) modeToggle.checked = scanMode;
+        if (modeLabel)  modeLabel.textContent = scanMode ? 'Modo scan (câmera)' : 'Modo digitação (teclado)';
+        if (scanMode) {
+            if (qrCamera && qrCamera.classList.contains('d-none')) setTimeout(abrirCamera, 200);
+        } else {
+            pararCamera();
+            focarScan();
+        }
+    }
+
+    if (modeToggle) {
+        modeToggle.addEventListener('change', () => {
+            scanMode = modeToggle.checked;
+            aplicarModo();
+            const body = new URLSearchParams(); body.append('scan', scanMode ? 1 : 0);
+            fetch(@json(route('scan-mode')), {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body,
+            }).catch(() => {});
+        });
+    }
+
+    aplicarModo(); // estado inicial conforme a sessão
 })();
 </script>
 @endsection

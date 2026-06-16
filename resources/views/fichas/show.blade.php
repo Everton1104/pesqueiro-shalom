@@ -44,26 +44,6 @@
         <div class="pa-qrbox"><div id="qrcode-print"></div></div>
         <div class="pa-code">{{ $ficha->codigo }}</div>
         <div class="pa-code-label">código da ficha</div>
-        @if($ficha->cliente)<div class="pa-cliente">{{ $ficha->cliente }}</div>@endif
-        <table class="pa-items">
-            @if($itensBalcao->isNotEmpty())
-                <tr class="sec"><td colspan="2">Retirar no balcão</td></tr>
-                @foreach($itensBalcao as $i)
-                    <tr><td class="q">{{ $i->quantity }}x</td><td>{{ $i->name }}</td></tr>
-                @endforeach
-            @endif
-            @if($itensCozinha->isNotEmpty())
-                <tr class="sec"><td colspan="2">Cozinha (chamaremos pelo nome)</td></tr>
-                @foreach($itensCozinha as $i)
-                    <tr><td class="q">{{ $i->quantity }}x</td><td>{{ $i->name }}</td></tr>
-                @endforeach
-            @endif
-        </table>
-        <table class="pa-tot"><tr><td>TOTAL</td><td class="v">{{ $ficha->total_formatted }}</td></tr></table>
-        <div class="pa-info">
-            {{ $ficha->payment_label }} · {{ $ficha->created_at->format('d/m/Y H:i') }}<br>
-            Apresente o QR no balcão para retirar.
-        </div>
     </div>
 
     {{-- Tela --}}

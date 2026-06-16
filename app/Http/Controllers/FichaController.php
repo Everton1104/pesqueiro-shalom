@@ -20,7 +20,7 @@ class FichaController extends Controller
     public function index(Request $request)
     {
         // Itens vendáveis do cardápio (mesma base do pad da comanda)
-        $vendaveis = CardapioItem::whereIn('status', ['active', 'unavailable'])->orderBy('sort_order')->get();
+        $vendaveis = CardapioItem::sellable()->orderBy('sort_order')->get();
 
         // Ordem personalizada do pad (admins arrastam na tela da comanda; reaproveitamos aqui)
         $ordemItens = json_decode(Setting::get('pad_item_order', '[]'), true);

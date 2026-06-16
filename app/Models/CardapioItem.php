@@ -27,11 +27,19 @@ class CardapioItem extends Model
         'hidden'       => ['label' => 'Oculto',         'badge' => 'secondary'],
         'unavailable'  => ['label' => 'Indisponível',   'badge' => 'danger'],
         'coming_soon'  => ['label' => 'Em breve',       'badge' => 'warning'],
+        'especial'     => ['label' => 'Especial (só comanda/ficha)', 'badge' => 'info'],
     ];
 
+    // Itens exibidos no cardápio público (welcome). 'especial' fica de fora de propósito.
     public function scopeVisible($query)
     {
         return $query->whereIn('status', ['active', 'unavailable', 'coming_soon']);
+    }
+
+    // Itens lançáveis numa comanda ou ficha (inclui os especiais, que não saem no cardápio público).
+    public function scopeSellable($query)
+    {
+        return $query->whereIn('status', ['active', 'unavailable', 'especial']);
     }
 
     public function getPriceFormattedAttribute(): string

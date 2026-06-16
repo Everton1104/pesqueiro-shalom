@@ -27,6 +27,12 @@ Auth::routes();
 Route::get('/home', [HomeController::class, 'index'])->name('home');
 
 Route::middleware('auth')->group(function () {
+    // Preferência de modo de leitura (scan por câmera × digitação) — salva na sessão
+    Route::post('scan-mode', function (\Illuminate\Http\Request $request) {
+        session(['scan_mode' => $request->boolean('scan')]);
+        return response()->json(['ok' => true]);
+    })->name('scan-mode');
+
     Route::resource('cardapio', CardapioController::class)->except(['show']);
     Route::patch('cardapio/{cardapio}/cycle',        [CardapioController::class, 'cycleStatus'])->name('cardapio.cycle');
     Route::post('cardapio/reorder',                  [CardapioController::class, 'reorder'])->name('cardapio.reorder');
@@ -38,6 +44,7 @@ Route::middleware('auth')->group(function () {
     Route::get('comandas-abertas', [ComandaController::class, 'abertasJson'])->name('comandas.abertas'); // polling
     Route::post('comandas/pad-order', [ComandaController::class, 'savePadOrder'])->name('comandas.pad-order');
     Route::resource('comandas', ComandaController::class)->only(['index', 'store', 'show']);
+    Route::patch('comandas/{comanda}', [ComandaController::class, 'update'])->name('comandas.update');
     Route::get('comandas/{comanda}/sig', [ComandaController::class, 'sig'])->name('comandas.sig'); // polling
     Route::post('comandas/{comanda}/itens',                 [ComandaController::class, 'addItem'])->name('comandas.itens.add');
     Route::patch('comandas/{comanda}/itens/{item}',         [ComandaController::class, 'updateItem'])->name('comandas.itens.update');

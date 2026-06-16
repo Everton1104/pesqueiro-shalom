@@ -58,6 +58,7 @@ class BalcaoController extends Controller
                 'cliente' => $ficha->cliente,
             ],
             'itens' => $balcao->map(fn($i) => [
+                'id'       => $i->id,
                 'name'     => $i->name,
                 'quantity' => $i->quantity,
                 'obs'      => $i->observacao,
@@ -67,23 +68,39 @@ class BalcaoController extends Controller
         ]);
     }
 
-    // Marca os itens de balcão como entregues
-    public function entregar(Ficha $ficha)
+    // Marca itens de balcão como entregues. Aceita uma seleção (retirada parcial);
+    // sem seleção, entrega todos os pendentes.
+    public function entregar(Request $request, Ficha $ficha)
     {
         if ($ficha->status === 'cancelada') {
             return response()->json(['ok' => false, 'msg' => 'Esta ficha foi cancelada.'], 422);
         }
 
-        $pendentes = $ficha->items()->where('destino', 'balcao')->where('status', 'pendente');
+        // IDs selecionados na tela (retirada parcial). Vazio = entregar tudo.
+        $ids = array_filter(array_map('intval', (array) $request->input('itens', [])));
 
-        if ($pendentes->count() === 0) {
-            return response()->json(['ok' => false, 'msg' => 'Esta ficha já foi retirada no balcão.'], 422);
+        $afetados = $ficha->items()
+            ->where('destino', 'balcao')
+            ->where('status', 'pendente')
+            ->when($ids, fn($q) => $q->whereIn('id', $ids))
+            ->update(['status' => 'entregue', 'delivered_at' => now()]);
+
+        if ($afetados === 0) {
+            return response()->json(['ok' => false, 'msg' => 'Nenhum item pendente para entregar.'], 422);
         }
-
-        $pendentes->update(['status' => 'entregue', 'delivered_at' => now()]);
 
         $ficha->recalcStatus();
 
-        return response()->json(['ok' => true, 'msg' => 'Entrega confirmada.']);
+        // Ainda restam itens de balcão pendentes nesta ficha?
+        $restam = $ficha->items()->where('destino', 'balcao')->where('status', 'pendente')->count();
+
+        return response()->json([
+            'ok'      => true,
+            'parcial' => $restam > 0,
+            'restam'  => $restam,
+            'msg'     => $restam > 0
+                ? "Retirada confirmada. Ainda restam {$restam} item(ns) na ficha."
+                : 'Entrega concluída — ficha sem itens pendentes no balcão.',
+        ]);
     }
 }

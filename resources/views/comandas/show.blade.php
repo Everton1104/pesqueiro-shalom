@@ -209,7 +209,13 @@
     </div>
 
     <div class="mb-3">
-        <a href="{{ route('comandas.index') }}" class="text-muted text-decoration-none small">
+        {{-- Mobile: botão grande e destacado --}}
+        <a href="{{ route('comandas.index') }}"
+           class="btn btn-primary w-100 py-3 fw-bold d-flex d-sm-none align-items-center justify-content-center gap-2">
+            <span class="material-symbols-outlined" style="font-size:26px;">arrow_back</span> Voltar para comandas
+        </a>
+        {{-- Desktop: link discreto --}}
+        <a href="{{ route('comandas.index') }}" class="text-muted text-decoration-none small d-none d-sm-inline-flex align-items-center gap-1">
             <span class="material-symbols-outlined">arrow_back</span> Voltar para comandas
         </a>
     </div>
@@ -242,6 +248,12 @@
                     <h4 class="mb-0 fw-bold">{{ $comanda->cliente }}</h4>
                     @php $s = $statuses[$comanda->status]; @endphp
                     <span class="badge {{ $s['class'] }}">{{ $s['label'] }}</span>
+                    @if($comanda->is_open)
+                        <button type="button" class="btn btn-outline-secondary btn-sm no-print"
+                                data-bs-toggle="modal" data-bs-target="#editComandaModal" title="Editar comanda">
+                            <span class="material-symbols-outlined">edit</span>
+                        </button>
+                    @endif
                 </div>
                 <div class="text-muted small">
                     Código <span class="badge bg-light text-dark border font-monospace">{{ $comanda->codigo }}</span>
@@ -263,65 +275,9 @@
         </div>
     </div>
 
-    {{-- ── PAD de itens (apenas comanda aberta) ── --}}
-    @if($comanda->is_open)
-    <div class="card shadow-sm mb-4 no-print">
-        <div class="card-header d-flex align-items-center justify-content-between gap-2">
-            <span class="fw-bold">Adicionar itens</span>
-            @if(auth()->user()->is_admin)
-                <button type="button" id="toggle-reorder" class="btn btn-sm btn-outline-secondary">
-                    <span class="material-symbols-outlined">swap_horiz</span> Reordenar
-                </button>
-            @endif
-        </div>
-        <div class="card-body">
-            <div class="pad-filters mb-3" id="pad-filters">
-                <button type="button" class="btn btn-sm btn-primary pad-filter active" data-cat="__all">Todos</button>
-                @foreach($padCategorias as $categoria)
-                    <button type="button" class="btn btn-sm btn-outline-primary pad-filter" data-cat="{{ $categoria }}">{{ $categoria }}</button>
-                @endforeach
-            </div>
-            @if(auth()->user()->is_admin)
-                <div id="reorder-hint" class="text-warning small mb-3 d-none">
-                    <span class="material-symbols-outlined" style="font-size:16px;">drag_indicator</span>
-                    Arraste os itens para reordenar (pode misturar categorias). Clique em “Concluir” ao terminar.
-                </div>
-            @endif
-            @if($padItens->isEmpty())
-                <p class="text-muted mb-0">Nenhum item disponível no cardápio.</p>
-            @else
-            <div class="pad-grid" id="pad-grid">
-                @foreach($padItens as $ci)
-                <div class="pad-item" data-cat="{{ $ci->category }}"
-                     data-id="{{ $ci->id }}"
-                     data-name="{{ $ci->name }}"
-                     data-price="{{ $ci->price_formatted }}">
-                    @if($ci->image)
-                        <img src="{{ Storage::url($ci->image) }}" alt="{{ $ci->name }}" class="thumb">
-                    @else
-                        <div class="thumb">{{ $emojiMap[$ci->category] ?? '🍴' }}</div>
-                    @endif
-                    <div class="info">
-                        <div class="nome">{{ $ci->name }}</div>
-                        @if($ci->description)
-                            <div class="descricao">{{ $ci->description }}</div>
-                        @endif
-                        <div class="preco">{{ $ci->price_formatted }}</div>
-                    </div>
-                </div>
-                @endforeach
-            </div>
-            @endif
-        </div>
-    </div>
-    @endif
-
-    <div class="row g-4">
-
-        {{-- Itens da comanda --}}
-        <div class="col-12 col-lg-7">
-            <div class="card shadow-sm h-100">
-                <div class="card-header fw-bold">Itens da comanda</div>
+    {{-- Itens da comanda --}}
+    <div class="card shadow-sm mb-4">
+        <div class="card-header fw-bold">Itens da comanda</div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
@@ -402,11 +358,63 @@
                         </tfoot>
                     </table>
                 </div>
-            </div>
-        </div>
+    </div>{{-- /Itens da comanda (full width) --}}
 
-        {{-- Fechar --}}
-        <div class="col-12 col-lg-5 no-print">
+    {{-- ── PAD de itens (apenas comanda aberta, full width) ── --}}
+    @if($comanda->is_open)
+    <div class="card shadow-sm mb-4 no-print">
+        <div class="card-header d-flex align-items-center justify-content-between gap-2">
+            <span class="fw-bold">Adicionar itens</span>
+            @if(auth()->user()->is_admin)
+                <button type="button" id="toggle-reorder" class="btn btn-sm btn-outline-secondary">
+                    <span class="material-symbols-outlined">swap_horiz</span> Reordenar
+                </button>
+            @endif
+        </div>
+        <div class="card-body">
+            <div class="pad-filters mb-3" id="pad-filters">
+                <button type="button" class="btn btn-sm btn-primary pad-filter active" data-cat="__all">Todos</button>
+                @foreach($padCategorias as $categoria)
+                    <button type="button" class="btn btn-sm btn-outline-primary pad-filter" data-cat="{{ $categoria }}">{{ $categoria }}</button>
+                @endforeach
+            </div>
+            @if(auth()->user()->is_admin)
+                <div id="reorder-hint" class="text-warning small mb-3 d-none">
+                    <span class="material-symbols-outlined" style="font-size:16px;">drag_indicator</span>
+                    Arraste os itens para reordenar (pode misturar categorias). Clique em “Concluir” ao terminar.
+                </div>
+            @endif
+            @if($padItens->isEmpty())
+                <p class="text-muted mb-0">Nenhum item disponível no cardápio.</p>
+            @else
+            <div class="pad-grid" id="pad-grid">
+                @foreach($padItens as $ci)
+                <div class="pad-item" data-cat="{{ $ci->category }}"
+                     data-id="{{ $ci->id }}"
+                     data-name="{{ $ci->name }}"
+                     data-price="{{ $ci->price_formatted }}">
+                    @if($ci->image)
+                        <img src="{{ Storage::url($ci->image) }}" alt="{{ $ci->name }}" class="thumb">
+                    @else
+                        <div class="thumb">{{ $emojiMap[$ci->category] ?? '🍴' }}</div>
+                    @endif
+                    <div class="info">
+                        <div class="nome">{{ $ci->name }}</div>
+                        @if($ci->description)
+                            <div class="descricao">{{ $ci->description }}</div>
+                        @endif
+                        <div class="preco">{{ $ci->price_formatted }}</div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            @endif
+        </div>
+    </div>
+    @endif
+
+    {{-- Fechamento da comanda --}}
+    <div class="no-print">
             @if($comanda->is_open)
                 {{-- ── Fechamento da comanda: divisão + acertos + fechar (unificado) ── --}}
                 <div class="card shadow-sm border-success" id="acertos-card">
@@ -625,8 +633,6 @@
                 </div>
             @endif
         </div>
-
-    </div>
 </div>
 
 {{-- Modal: quantidade + observação ao tocar num item do pad --}}
@@ -660,6 +666,37 @@
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button class="btn btn-primary">
                     <span class="material-symbols-outlined">add</span> Adicionar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Modal: editar nome/observação da comanda --}}
+<div class="modal fade" id="editComandaModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <form action="{{ route('comandas.update', $comanda) }}" method="POST" class="modal-content">
+            @csrf @method('PATCH')
+            <div class="modal-header">
+                <h5 class="modal-title">Editar comanda</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Nome do cliente</label>
+                    <input type="text" name="cliente" class="form-control" maxlength="150"
+                           value="{{ old('cliente', $comanda->cliente) }}" required autofocus>
+                </div>
+                <div class="mb-1">
+                    <label class="form-label">Observação</label>
+                    <textarea name="observacao" class="form-control" rows="2" maxlength="255"
+                              placeholder="ex: mesa 5, aniversário…">{{ old('observacao', $comanda->observacao) }}</textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-primary">
+                    <span class="material-symbols-outlined">save</span> Salvar
                 </button>
             </div>
         </form>

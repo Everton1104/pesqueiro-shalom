@@ -19,12 +19,17 @@
             <div class="d-flex gap-2 align-items-end">
                 <div class="flex-grow-1">
                     <label class="form-label mb-1 fw-semibold small">Código da ficha</label>
-                    <input type="text" id="codigo-input" class="form-control" placeholder="Leia o QR ou digite o código…" autocomplete="off" autofocus>
+                    <input type="text" id="codigo-input" class="form-control" placeholder="Leia o QR ou digite o código…" autocomplete="off">
                 </div>
                 <button type="button" id="btn-buscar" class="btn btn-primary">Buscar</button>
                 <button type="button" id="qr-toggle" class="btn btn-outline-primary" title="Ler QR com a câmera">
                     <span class="material-symbols-outlined">qr_code_scanner</span>
                 </button>
+            </div>
+            {{-- Alternar modo: scan por câmera × digitação (salvo na sessão) --}}
+            <div class="form-check form-switch mt-2 mb-0">
+                <input class="form-check-input" type="checkbox" role="switch" id="scan-mode-toggle">
+                <label class="form-check-label small" for="scan-mode-toggle" id="scan-mode-label">Modo scan (câmera)</label>
             </div>
             <div id="qr-camera" class="d-none mt-3 text-center">
                 <div id="qr-reader"></div>
@@ -48,6 +53,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const resultado = document.getElementById('resultado');
     const buscarUrl = @json(route('balcao.buscar'));
 
+    // Modo de leitura: scan (câmera) × digitação (autofocus). Default + persistência na sessão.
+    const savedScanMode = @json(session('scan_mode'));
+    let scanMode = (savedScanMode === null || savedScanMode === undefined) ? true : !!savedScanMode;
+    // Foca o campo só no modo digitação (ativa o autofocus/teclado)
+    const focarInput = () => { if (!scanMode && input) input.focus(); };
+
     // ── Busca da ficha ──
     async function buscar(codigo) {
         codigo = (codigo || '').trim();
@@ -64,10 +75,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
+    const obsHtml = o => o ? '<div class="text-warning" style="font-size:.9rem;">⚠ ' + esc(o) + '</div>' : '';
+
+    // Lista somente-leitura (itens já entregues / conferência)
     function itensHtml(itens) {
         return itens.map(i => '<div class="item-grande"><span class="q">' + i.quantity + 'x</span>' + esc(i.name) +
             (i.entregue ? ' <span class="badge bg-secondary ms-1">entregue</span>' : '') +
-            (i.obs ? '<div class="text-warning" style="font-size:.9rem;">⚠ ' + esc(i.obs) + '</div>' : '') + '</div>').join('');
+            obsHtml(i.obs) + '</div>').join('');
+    }
+
+    // Linha com checkbox para escolher o que entregar agora (retirada parcial)
+    function itensCheckHtml(itens) {
+        return itens.map(i =>
+            '<label class="item-grande d-flex align-items-center gap-2" style="cursor:pointer;">' +
+              '<input type="checkbox" class="form-check-input m-0 flex-shrink-0 chk-item" value="' + i.id + '" checked>' +
+              '<span><span class="q">' + i.quantity + 'x</span>' + esc(i.name) + obsHtml(i.obs) + '</span>' +
+            '</label>').join('');
     }
 
     function render(data) {
@@ -96,31 +119,54 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // Ficha válida — itens a entregar + botão confirmar
+        // Ficha válida — separa o que ainda está pendente do que já foi retirado antes
+        const pendentes = data.itens.filter(i => !i.entregue);
+        const entregues = data.itens.filter(i => i.entregue);
+
+        const jaRetirados = entregues.length
+            ? '<button class="btn btn-sm btn-outline-secondary mt-3" type="button" data-bs-toggle="collapse" data-bs-target="#jaRetirados">' +
+                '<span class="material-symbols-outlined">history</span> Já retirados (' + entregues.length + ')</button>' +
+              '<div class="collapse mt-2" id="jaRetirados">' + itensHtml(entregues) + '</div>'
+            : '';
+
         resultado.innerHTML =
             '<div class="card shadow-sm border-success">' +
               '<div class="card-header bg-success-subtle fw-bold">' +
                 '<span class="material-symbols-outlined">inventory_2</span> Entregar — Ficha ' + f.codigo +
               '</div>' +
               '<div class="card-body">' + cliente +
-                '<div class="my-2">' + itensHtml(data.itens) + '</div>' +
-                '<button type="button" id="btn-entregar" class="btn btn-success w-100 py-2 fw-bold">' +
-                  '<span class="material-symbols-outlined">check_circle</span> Confirmar entrega</button>' +
+                '<p class="text-muted small mb-1 mt-2">Desmarque o que o cliente <strong>não</strong> vai levar agora — fica pendente pra próxima leitura.</p>' +
+                '<div class="my-1">' + itensCheckHtml(pendentes) + '</div>' +
+                '<button type="button" id="btn-entregar" class="btn btn-success w-100 py-2 fw-bold mt-2">' +
+                  '<span class="material-symbols-outlined">check_circle</span> Confirmar retirada</button>' +
+                jaRetirados +
               '</div>' +
             '</div>';
 
         document.getElementById('btn-entregar').addEventListener('click', async function () {
+            const ids = [...document.querySelectorAll('.chk-item:checked')].map(c => c.value);
+            if (ids.length === 0) {
+                alert('Marque pelo menos um item para entregar.');
+                return;
+            }
             this.disabled = true;
             try {
+                const params = new URLSearchParams();
+                ids.forEach(id => params.append('itens[]', id));
                 const r = await fetch(data.entregar_url, {
                     method: 'POST',
-                    headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+                    headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params,
                 });
                 const res = await r.json();
-                if (res.ok) {
-                    resultado.innerHTML = '<div class="alert alert-success text-center fs-5"><span class="material-symbols-outlined">task_alt</span> Entrega confirmada — Ficha ' + f.codigo + '!</div>';
-                    input.value = ''; input.focus();
+                if (res.ok && res.parcial) {
+                    // Sobrou item pendente: recarrega a ficha mostrando o que ainda falta
+                    buscar(f.codigo);
+                } else if (res.ok) {
+                    resultado.innerHTML = '<div class="alert alert-success text-center fs-5"><span class="material-symbols-outlined">task_alt</span> Entrega concluída — Ficha ' + f.codigo + '!</div>';
+                    input.value = ''; focarInput();
                 } else {
+                    this.disabled = false;
                     resultado.innerHTML = '<div class="alert alert-danger">' + (res.msg || 'Não foi possível confirmar.') + '</div>';
                 }
             } catch (e) {
@@ -150,6 +196,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (cameraOn) return;
         if (typeof Html5Qrcode === 'undefined') { qrStatus.textContent = 'Não foi possível carregar o leitor de QR.'; return; }
         qrCamera.classList.remove('d-none');
+        if (input) input.blur(); // fecha o teclado pra não cobrir a câmera
         qrStatus.textContent = 'Aponte a câmera para o QR da ficha…';
         if (!html5Qr) html5Qr = new Html5Qrcode('qr-reader');
         try {
@@ -178,8 +225,35 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     qrClose.addEventListener('click', pararCamera);
 
-    // Abre a câmera automaticamente ao entrar na tela
-    abrirCamera();
+    // ── Checkbox: modo scan (câmera) × digitação (teclado), salvo na sessão ──
+    const modeToggle = document.getElementById('scan-mode-toggle');
+    const modeLabel  = document.getElementById('scan-mode-label');
+
+    function aplicarModo() {
+        if (modeToggle) modeToggle.checked = scanMode;
+        if (modeLabel)  modeLabel.textContent = scanMode ? 'Modo scan (câmera)' : 'Modo digitação (teclado)';
+        if (scanMode) {
+            if (qrCamera.classList.contains('d-none')) abrirCamera();
+        } else {
+            pararCamera();
+            focarInput();
+        }
+    }
+
+    if (modeToggle) {
+        modeToggle.addEventListener('change', () => {
+            scanMode = modeToggle.checked;
+            aplicarModo();
+            const body = new URLSearchParams(); body.append('scan', scanMode ? 1 : 0);
+            fetch(@json(route('scan-mode')), {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+                body,
+            }).catch(() => {});
+        });
+    }
+
+    aplicarModo(); // estado inicial conforme a sessão
 });
 </script>
 @endsection

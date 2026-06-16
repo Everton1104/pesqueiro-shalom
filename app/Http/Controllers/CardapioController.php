@@ -57,7 +57,7 @@ class CardapioController extends Controller
             'image'       => 'nullable|image|mimes:jpg,jpeg,png,webp|max:12288',
             'price'       => 'required|numeric|min:0',
             'sort_order'  => 'required|integer|min:0',
-            'status'      => 'required|in:active,hidden,unavailable,coming_soon',
+            'status'      => 'required|in:active,hidden,unavailable,coming_soon,especial',
         ]);
 
         if ($request->hasFile('image')) {
@@ -88,7 +88,7 @@ class CardapioController extends Controller
             'image'        => 'nullable|image|mimes:jpg,jpeg,png,webp|max:12288',
             'price'        => 'required|numeric|min:0',
             'sort_order'   => 'required|integer|min:0',
-            'status'       => 'required|in:active,hidden,unavailable,coming_soon',
+            'status'       => 'required|in:active,hidden,unavailable,coming_soon,especial',
             'remove_image' => 'boolean',
         ]);
 
@@ -114,10 +114,10 @@ class CardapioController extends Controller
         return redirect()->route('cardapio.index')->with('status', 'Item removido.');
     }
 
-    // Cicla entre: active → hidden → unavailable → coming_soon → active
+    // Cicla entre: active → hidden → unavailable → coming_soon → especial → active
     public function cycleStatus(CardapioItem $cardapio)
     {
-        $cycle = ['active' => 'hidden', 'hidden' => 'unavailable', 'unavailable' => 'coming_soon', 'coming_soon' => 'active'];
+        $cycle = ['active' => 'hidden', 'hidden' => 'unavailable', 'unavailable' => 'coming_soon', 'coming_soon' => 'especial', 'especial' => 'active'];
         $next = $cycle[$cardapio->status] ?? 'active';
         $cardapio->update(['status' => $next, 'active' => $next === 'active']);
         return redirect()->route('cardapio.index')

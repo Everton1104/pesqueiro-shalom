@@ -41,12 +41,14 @@
         'hidden'      => ['label' => 'Oculto',        'class' => 'bg-secondary'],
         'unavailable' => ['label' => 'Indisponível',  'class' => 'bg-danger'],
         'coming_soon' => ['label' => 'Em breve',      'class' => 'bg-warning text-dark'],
+        'especial'    => ['label' => 'Especial',      'class' => 'bg-info text-dark'],
     ];
     $statusIcon = [
         'active'      => 'check_circle',
         'hidden'      => 'visibility_off',
         'unavailable' => 'cancel',
         'coming_soon' => 'schedule',
+        'especial'    => 'star',
     ];
     $emojiMap = [
         'PORÇÕES'=>'🍽','COMIDA'=>'🍚','SALGADOS'=>'🥟','CERVEJAS'=>'🍺',

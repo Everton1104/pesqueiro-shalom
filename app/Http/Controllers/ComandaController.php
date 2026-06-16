@@ -86,7 +86,7 @@ class ComandaController extends Controller
         $comanda->load('items.cardapioItem', 'pagamentos.user');
 
         // Itens vendáveis do cardápio
-        $vendaveis = CardapioItem::whereIn('status', ['active', 'unavailable'])->orderBy('sort_order')->get();
+        $vendaveis = CardapioItem::sellable()->orderBy('sort_order')->get();
 
         // Ordem personalizada dos itens do pad (admins arrastam — pode misturar categorias)
         $ordemItens = json_decode(Setting::get('pad_item_order', '[]'), true);
@@ -112,6 +112,21 @@ class ComandaController extends Controller
             'statuses'      => Comanda::STATUSES,
             'methods'       => Comanda::PAYMENT_METHODS,
         ]);
+    }
+
+    // Edita o nome (e observação) de uma comanda aberta
+    public function update(Request $request, Comanda $comanda)
+    {
+        $this->garantirAberta($comanda);
+
+        $data = $request->validate([
+            'cliente'    => 'required|string|max:150',
+            'observacao' => 'nullable|string|max:255',
+        ]);
+
+        $comanda->update($data);
+
+        return back()->with('status', 'Comanda atualizada para ' . $comanda->cliente . '.');
     }
 
     // Leitura do QR Code (leitor USB digita o código + Enter) OU busca por nome do cliente
