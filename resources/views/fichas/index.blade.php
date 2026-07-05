@@ -307,7 +307,6 @@
     </div>
 </div>
 
-@if($printFicha)
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     @if($printFicha)
@@ -522,5 +521,4 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
-@endif
 @endsection
