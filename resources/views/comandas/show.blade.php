@@ -399,7 +399,12 @@
                         <div class="thumb">{{ $emojiMap[$ci->category] ?? '🍴' }}</div>
                     @endif
                     <div class="info">
-                        <div class="nome">{{ $ci->name }}</div>
+                        <div class="nome">
+                            {{ $ci->name }}
+                            @if($ci->requer_preparo)
+                                <span class="badge bg-warning text-dark" style="font-size:.55rem;vertical-align:middle;" title="Vai para a cozinha">cozinha</span>
+                            @endif
+                        </div>
                         @if($ci->description)
                             <div class="descricao">{{ $ci->description }}</div>
                         @endif

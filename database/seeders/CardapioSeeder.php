@@ -12,7 +12,11 @@ class CardapioSeeder extends Seeder
     {
         CardapioCategory::truncate();
         foreach (CardapioItem::CATEGORIES as $i => $name) {
-            CardapioCategory::create(['name' => $name, 'sort_order' => $i]);
+            CardapioCategory::create([
+                'name'       => $name,
+                'cozinha'    => in_array($name, ['PORÇÕES', 'COMIDA'], true),
+                'sort_order' => $i,
+            ]);
         }
 
         CardapioItem::truncate();

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CardapioCategory;
 use App\Models\CardapioItem;
 use App\Models\Comanda;
 use App\Models\Ficha;
@@ -49,7 +50,7 @@ class FichaController extends Controller
             'padCategorias' => $padCategorias,
             'recentes'      => Ficha::with('items')->latest()->take(12)->get(),
             'methods'       => Comanda::PAYMENT_METHODS,
-            'cozinhaCats'   => Ficha::COZINHA_CATEGORIES,
+            'cozinhaCats'   => CardapioCategory::where('cozinha', true)->pluck('name')->all(),
             'printFicha'    => $printFicha,
         ]);
     }

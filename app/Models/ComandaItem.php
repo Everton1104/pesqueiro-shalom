@@ -7,13 +7,22 @@ use Illuminate\Database\Eloquent\Model;
 class ComandaItem extends Model
 {
     protected $fillable = [
-        'comanda_id', 'cardapio_item_id', 'name', 'unit_price', 'quantity', 'observacao',
+        'comanda_id', 'cardapio_item_id', 'name', 'category', 'unit_price', 'quantity',
+        'observacao', 'preparo', 'status', 'delivered_at',
     ];
 
     protected $casts = [
-        'unit_price' => 'decimal:2',
-        'quantity'   => 'integer',
+        'unit_price'   => 'decimal:2',
+        'quantity'     => 'integer',
+        'preparo'      => 'boolean',
+        'delivered_at' => 'datetime',
     ];
+
+    // Itens de cozinha ainda pendentes (alimentam a fila da Cozinha)
+    public function scopeCozinhaPendente($query)
+    {
+        return $query->where('preparo', true)->where('status', 'pendente');
+    }
 
     public function comanda()
     {

@@ -47,9 +47,13 @@ class CardapioItem extends Model
         return 'R$ ' . number_format($this->price, 2, ',', '.');
     }
 
-    // Item que exige preparo na cozinha (categorias PORÇÕES / COMIDA) — usado nas Fichas
+    // Item que exige preparo na cozinha (seções marcadas como "cozinha" no cardápio) — usado nas Fichas.
+    // Cache estático: carrega as seções de cozinha uma vez por request (evita N+1 em loops de itens).
     public function getRequerPreparoAttribute(): bool
     {
-        return in_array($this->category, Ficha::COZINHA_CATEGORIES, true);
+        static $cozinhaCats = null;
+        $cozinhaCats ??= CardapioCategory::where('cozinha', true)->pluck('name')->all();
+
+        return in_array($this->category, $cozinhaCats, true);
     }
 }

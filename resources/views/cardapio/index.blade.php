@@ -24,6 +24,9 @@
         <div class="d-flex gap-2">
             <button id="btn-expand-all"   class="btn btn-outline-secondary btn-sm">Expandir tudo</button>
             <button id="btn-collapse-all" class="btn btn-outline-secondary btn-sm">Recolher tudo</button>
+            <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNovaSecao">
+                + Nova seção
+            </button>
             <a href="{{ route('cardapio.create') }}" class="btn btn-primary btn-sm">+ Novo item</a>
         </div>
     </div>
@@ -31,6 +34,13 @@
     @if(session('status'))
         <div class="alert alert-success alert-dismissible fade show" role="alert">
             {{ session('status') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ session('error') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
@@ -61,8 +71,9 @@
 
         @foreach($items as $cat => $catItems)
         @php
-            $collapseId = 'cat-' . Str::slug($cat);
-            $catId = $categoryMeta[$cat]->id ?? 0;
+            $collapseId  = 'cat-' . Str::slug($cat);
+            $catId       = $categoryMeta[$cat]->id ?? 0;
+            $catCozinha  = $categoryMeta[$cat]->cozinha ?? false;
         @endphp
         <div class="card mb-3" data-cat-id="{{ $catId }}">
 
@@ -81,12 +92,27 @@
                         </span>
                         <span class="fw-bold text-uppercase" style="letter-spacing:.08em; font-size:.82rem;">{{ $cat }}</span>
                         <span class="badge bg-secondary ms-1">{{ $catItems->count() }}</span>
+                        @if($catCozinha)
+                            <span class="badge bg-warning text-dark ms-1" title="Itens desta seção vão para a cozinha">cozinha</span>
+                        @endif
                     </span>
                 </div>
-                <span class="text-muted small d-none d-md-inline">
-                    <span class="material-symbols-outlined" style="font-size:14px;">swap_vert</span>
-                    Arraste para reordenar
-                </span>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted small d-none d-md-inline">
+                        <span class="material-symbols-outlined" style="font-size:14px;">swap_vert</span>
+                        Arraste para reordenar
+                    </span>
+                    @if($catId)
+                    <form action="{{ route('cardapio.categories.destroy', $catId) }}" method="POST" class="d-inline"
+                          onsubmit="return confirm('Remover a seção &quot;{{ addslashes($cat) }}&quot;? Só é possível se não houver itens nela.')">
+                        @csrf @method('DELETE')
+                        <button class="btn btn-outline-danger btn-sm" title="Remover seção"
+                                style="padding:.1rem .35rem;">
+                            <span class="material-symbols-outlined" style="font-size:18px;">delete</span>
+                        </button>
+                    </form>
+                    @endif
+                </div>
             </div>
 
             <div class="collapse show" id="{{ $collapseId }}">
@@ -164,6 +190,41 @@
             <a href="{{ route('cardapio.create') }}" class="btn btn-primary mt-2">Adicionar primeiro item</a>
         </div>
     @endif
+
+    {{-- Modal: Nova seção --}}
+    <div class="modal fade" id="modalNovaSecao" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <form action="{{ route('cardapio.categories.store') }}" method="POST">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title">Nova seção</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="secao-nome" class="form-label fw-semibold">Nome da seção</label>
+                            <input type="text" name="name" id="secao-nome"
+                                   class="form-control @error('name') is-invalid @enderror"
+                                   placeholder="Ex.: SOBREMESAS" required maxlength="100" autofocus>
+                            <div class="form-text">Use o mesmo nome sempre (maiúsculas/minúsculas importam).</div>
+                            @error('name') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="cozinha" value="1" id="secao-cozinha">
+                            <label class="form-check-label" for="secao-cozinha">
+                                Vai para a cozinha <span class="text-muted">(exige preparo — porções, comida)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Criar seção</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
 </div>
 

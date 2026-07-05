@@ -48,9 +48,6 @@
                                 <a class="nav-link {{ request()->routeIs('fichas.*') ? 'active' : '' }}" href="{{ route('fichas.index') }}">Fichas</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link {{ request()->routeIs('balcao.*') ? 'active' : '' }}" href="{{ route('balcao.index') }}">Balcão</a>
-                            </li>
-                            <li class="nav-item">
                                 <a class="nav-link {{ request()->routeIs('cozinha.*') ? 'active' : '' }}" href="{{ route('cozinha.index') }}">Cozinha</a>
                             </li>
                             @if(auth()->user()->is_admin)

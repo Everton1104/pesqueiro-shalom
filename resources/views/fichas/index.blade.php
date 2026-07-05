@@ -63,8 +63,9 @@
         .pa-code-label { text-align: center; font-size: 7pt; text-transform: uppercase; letter-spacing: .12em; }
         .pa-cliente { text-align: center; font-size: 12pt; font-weight: 800; margin-top: 2mm; }
         .pa-items { width: 100%; border-collapse: collapse; font-size: 9pt; border-top: 1px dashed #000; margin-top: 2.5mm; }
-        .pa-items td { padding: .7mm 0; vertical-align: top; }
-        .pa-items .q { white-space: nowrap; padding-right: 2mm; }
+        .pa-items td { padding: 1mm 0; vertical-align: top; }
+        .pa-items .chk { font-size: 13pt; line-height: 1; padding-right: 2mm; white-space: nowrap; }
+        .pa-items .q { white-space: nowrap; padding-right: 2mm; font-weight: 700; }
         .pa-items .sec td { font-weight: 800; font-size: 8pt; text-transform: uppercase; padding-top: 1.5mm; }
         .pa-tot { width: 100%; border-top: 1px dashed #000; margin-top: 1.5mm; padding-top: 1mm; font-weight: 800; font-size: 12pt; }
         .pa-tot td { padding: .4mm 0; }
@@ -74,28 +75,20 @@
 </style>
 
 @if($printFicha)
-@php $pfBalcao = $printFicha->balcaoItems(); $pfCozinha = $printFicha->cozinhaItems(); @endphp
-<div class="print-area">
+<div class="print-area" id="print-area">
     <div class="pa-brand">PESQUEIRO SHALOM</div>
     <div class="pa-tipo">Ficha — pré-paga</div>
-    <div class="pa-qrbox"><div id="qrcode-print"></div></div>
     <div class="pa-code">{{ $printFicha->codigo }}</div>
-    <div class="pa-code-label">código da ficha</div>
     @if($printFicha->cliente)<div class="pa-cliente">{{ $printFicha->cliente }}</div>@endif
     <table class="pa-items">
-        @if($pfBalcao->isNotEmpty())
-            <tr class="sec"><td colspan="2">Retirar no balcão</td></tr>
-            @foreach($pfBalcao as $i)<tr><td class="q">{{ $i->quantity }}x</td><td>{{ $i->name }}@if($i->observacao)<br><small>obs: {{ $i->observacao }}</small>@endif</td></tr>@endforeach
-        @endif
-        @if($pfCozinha->isNotEmpty())
-            <tr class="sec"><td colspan="2">Cozinha (chamaremos pelo nome)</td></tr>
-            @foreach($pfCozinha as $i)<tr><td class="q">{{ $i->quantity }}x</td><td>{{ $i->name }}@if($i->observacao)<br><small>obs: {{ $i->observacao }}</small>@endif</td></tr>@endforeach
-        @endif
+        <tr class="sec"><td colspan="3">Entregar — risque o que for entregue</td></tr>
+        @foreach($printFicha->items as $i)
+            <tr><td class="chk">☐</td><td class="q">{{ $i->quantity }}x</td><td>{{ $i->name }}@if($i->observacao)<br><small>obs: {{ $i->observacao }}</small>@endif</td></tr>
+        @endforeach
     </table>
     <table class="pa-tot"><tr><td>TOTAL</td><td class="v">{{ $printFicha->total_formatted }}</td></tr></table>
     <div class="pa-info">
-        {{ $printFicha->payment_label }} · {{ $printFicha->created_at->format('d/m/Y H:i') }}<br>
-        Apresente o QR no balcão para retirar.
+        {{ $printFicha->payment_label }} · {{ $printFicha->created_at->format('d/m/Y H:i') }}
     </div>
 </div>
 @endif
@@ -211,6 +204,9 @@
                         <td><span class="badge {{ $f->status_badge['class'] }}">{{ $f->status_badge['label'] }}</span></td>
                         <td class="text-end">
                             <div class="d-inline-flex gap-1">
+                                <a href="{{ route('fichas.show', ['ficha' => $f, 'print' => 1]) }}" class="btn btn-sm btn-outline-primary" title="Imprimir lista de entrega" target="_blank">
+                                    <span class="material-symbols-outlined">print</span>
+                                </a>
                                 <a href="{{ route('fichas.show', $f) }}" class="btn btn-sm btn-outline-secondary" title="Ver / reimprimir">
                                     <span class="material-symbols-outlined">receipt_long</span>
                                 </a>
@@ -312,19 +308,13 @@
 </div>
 
 @if($printFicha)
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-@endif
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     @if($printFicha)
-    // Ficha recém-paga: imprime e mantém o caixa nesta tela para a próxima
+    // Ficha recém-paga: move a área de impressão para fora do #app e imprime
     (function () {
         const printArea = document.querySelector('.print-area');
         if (printArea) document.body.appendChild(printArea);
-        const qrEl = document.getElementById('qrcode-print');
-        if (qrEl && window.QRCode) {
-            new QRCode(qrEl, { text: @json($printFicha->codigo), width: 320, height: 320, correctLevel: QRCode.CorrectLevel.M });
-        }
         setTimeout(function () { window.print(); }, 400);
     })();
     @endif
@@ -532,4 +522,5 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
+@endif
 @endsection

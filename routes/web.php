@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\BalcaoController;
 use App\Http\Controllers\CardapioController;
 use App\Http\Controllers\ComandaController;
 use App\Http\Controllers\CozinhaController;
@@ -37,6 +36,8 @@ Route::middleware('auth')->group(function () {
     Route::patch('cardapio/{cardapio}/cycle',        [CardapioController::class, 'cycleStatus'])->name('cardapio.cycle');
     Route::post('cardapio/reorder',                  [CardapioController::class, 'reorder'])->name('cardapio.reorder');
     Route::post('cardapio-categories/reorder',       [CardapioController::class, 'reorderCategories'])->name('cardapio.categories.reorder');
+    Route::post('cardapio-categories',               [CardapioController::class, 'storeCategory'])->name('cardapio.categories.store');
+    Route::delete('cardapio-categories/{category}',  [CardapioController::class, 'destroyCategory'])->name('cardapio.categories.destroy');
 
     // ── Comandas ──
     // 'scan' antes do resource para não ser capturado como {comanda}
@@ -60,15 +61,11 @@ Route::middleware('auth')->group(function () {
     Route::post('fichas/{ficha}/cancelar', [FichaController::class, 'cancelar'])->name('fichas.cancelar');
     Route::delete('fichas/{ficha}',        [FichaController::class, 'destroy'])->name('fichas.destroy');
 
-    // ── Balcão (retirada de prontos via QR) ──
-    Route::get('balcao',                  [BalcaoController::class, 'index'])->name('balcao.index');
-    Route::get('balcao/buscar',           [BalcaoController::class, 'buscar'])->name('balcao.buscar'); // JSON por código
-    Route::post('balcao/{ficha}/entregar', [BalcaoController::class, 'entregar'])->name('balcao.entregar');
-
     // ── Cozinha (fila de preparo) ──
     Route::get('cozinha',                  [CozinhaController::class, 'index'])->name('cozinha.index');
     Route::get('cozinha-fila',             [CozinhaController::class, 'fila'])->name('cozinha.fila'); // polling
     Route::patch('cozinha/{ficha}/concluir', [CozinhaController::class, 'concluir'])->name('cozinha.concluir');
+    Route::patch('cozinha/comandas/{comanda}/concluir', [CozinhaController::class, 'concluirComanda'])->name('cozinha.comandas.concluir');
 
     // ── Relatórios ──
     Route::get('relatorios', [RelatorioController::class, 'index'])->name('relatorios.index');

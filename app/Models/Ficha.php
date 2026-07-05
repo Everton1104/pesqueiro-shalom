@@ -22,7 +22,6 @@ class Ficha extends Model
 
     const STATUSES = [
         'paga'      => ['label' => 'Paga',      'class' => 'bg-success'],
-        'concluida' => ['label' => 'Concluída', 'class' => 'bg-secondary'],
         'cancelada' => ['label' => 'Cancelada', 'class' => 'bg-danger'],
     ];
 
@@ -80,21 +79,12 @@ class Ficha extends Model
         return Comanda::paymentLabel($this->payment_method);
     }
 
-    // Recalcula o status da ficha a partir dos itens (concluída quando tudo foi entregue)
+    // A entrega das fichas é física (lista impressa riscada à mão), então a ficha permanece "paga".
+    // A cozinha ainda marca itens como entregue para sair da fila; este método mantém a guarda de
+    // cancelada apenas para compatibilidade — não há mais transição para "concluída".
     public function recalcStatus(): void
     {
-        if ($this->status === 'cancelada') {
-            return;
-        }
-
-        $itens = $this->items()->get();
-        $tudoEntregue = $itens->isNotEmpty() && $itens->every(fn($i) => $i->status === 'entregue');
-
-        if ($tudoEntregue && $this->status !== 'concluida') {
-            $this->update(['status' => 'concluida', 'concluded_at' => now()]);
-        } elseif (!$tudoEntregue && $this->status === 'concluida') {
-            $this->update(['status' => 'paga', 'concluded_at' => null]);
-        }
+        // sem transição de status: a ficha fica "paga"
     }
 
     public static function gerarCodigo(): string

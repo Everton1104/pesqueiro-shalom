@@ -172,11 +172,14 @@ class ComandaController extends Controller
 
         $item = CardapioItem::findOrFail($data['cardapio_item_id']);
         $obs  = trim($data['observacao'] ?? '') ?: null;
+        $preparo = $item->requer_preparo;
 
-        // Agrupa com um lançamento igual já existente (mesmo produto, preço e observação)
+        // Agrupa com um lançamento igual ainda pendente (mesmo produto, preço e observação).
+        // Itens de cozinha já entregues não são agrupados: a cozinha precisa ver como pedido novo.
         $existente = $comanda->items()
             ->where('cardapio_item_id', $item->id)
             ->where('unit_price', $item->price)
+            ->where('status', 'pendente')
             ->when($obs === null, fn($q) => $q->whereNull('observacao'))
             ->when($obs !== null, fn($q) => $q->where('observacao', $obs))
             ->first();
@@ -187,9 +190,12 @@ class ComandaController extends Controller
             $comanda->items()->create([
                 'cardapio_item_id' => $item->id,
                 'name'             => $item->name,
+                'category'         => $item->category,
                 'unit_price'       => $item->price,
                 'quantity'         => $data['quantity'],
                 'observacao'       => $obs,
+                'preparo'          => $preparo,
+                'status'           => 'pendente',
             ]);
         }
 
@@ -321,6 +327,9 @@ class ComandaController extends Controller
             ? Comanda::PAYMENT_MISTO
             : $formasUsadas->first();
 
+        // Comanda encerrada: tira da fila da cozinha os itens de cozinha ainda pendentes.
+        $this->liberarCozinhaPendente($comanda);
+
         $comanda->update([
             'status'         => 'fechada',
             'payment_method' => $formaComanda,
@@ -340,6 +349,9 @@ class ComandaController extends Controller
         if (!$this->autorizado($request)) {
             return back()->with('error', 'Senha de autorização inválida ou não definida.');
         }
+
+        // Comanda cancelada: tira da fila da cozinha os itens de cozinha ainda pendentes.
+        $this->liberarCozinhaPendente($comanda);
 
         $comanda->update(['status' => 'cancelada', 'closed_at' => now()]);
 
@@ -376,6 +388,12 @@ class ComandaController extends Controller
     private function garantirAberta(Comanda $comanda): void
     {
         abort_unless($comanda->status === 'aberta', 403, 'Comanda não está aberta.');
+    }
+
+    // Tira da fila da cozinha os itens de cozinha pendentes (ao fechar/cancelar a comanda)
+    private function liberarCozinhaPendente(Comanda $comanda): void
+    {
+        $comanda->items()->cozinhaPendente()->update(['status' => 'entregue', 'delivered_at' => now()]);
     }
 
     private function gerarCodigo(): string

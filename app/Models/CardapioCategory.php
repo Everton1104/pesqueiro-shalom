@@ -6,5 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class CardapioCategory extends Model
 {
-    protected $fillable = ['name', 'sort_order'];
+    protected $fillable = ['name', 'cozinha', 'sort_order'];
+
+    protected $casts = ['cozinha' => 'boolean'];
 }

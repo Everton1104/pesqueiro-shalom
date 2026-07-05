@@ -4,7 +4,6 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 <style>
     .material-symbols-outlined { font-variation-settings: 'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20; vertical-align: middle; font-size: 18px; line-height: 1; }
-    #qrcode img { border: 1px solid #dee2e6; border-radius: 8px; padding: 6px; background: #fff; }
 
     /* ── CUPOM DE IMPRESSÃO (impressora térmica 80mm) ── */
     .print-area { display: none; }
@@ -17,15 +16,12 @@
         .print-area { display: block; width: 100%; color: #000; font-family: 'Nunito', Arial, sans-serif; }
         .pa-brand { text-align: center; font-weight: 800; font-size: 11pt; letter-spacing: .06em; margin-bottom: 1mm; }
         .pa-tipo { text-align: center; font-size: 8pt; text-transform: uppercase; letter-spacing: .14em; margin-bottom: 2mm; }
-        .pa-qrbox { border: 2px solid #000; border-radius: 4px; padding: 2mm; width: 50mm; margin: 0 auto; }
-        .pa-qrbox img, .pa-qrbox canvas { width: 100% !important; height: auto !important; display: block; image-rendering: pixelated; }
         .pa-code { text-align: center; font-family: 'Courier New', monospace; font-size: 22pt; font-weight: 700; letter-spacing: .18em; margin: 2.5mm 0 1mm; }
-        .pa-code-label { text-align: center; font-size: 7pt; text-transform: uppercase; letter-spacing: .12em; }
         .pa-cliente { text-align: center; font-size: 12pt; font-weight: 800; margin-top: 2mm; }
         .pa-items { width: 100%; border-collapse: collapse; font-size: 9pt; border-top: 1px dashed #000; margin-top: 2.5mm; }
-        .pa-items td { padding: .7mm 0; vertical-align: top; }
-        .pa-items .q { white-space: nowrap; padding-right: 2mm; }
-        .pa-items .v { text-align: right; white-space: nowrap; }
+        .pa-items td { padding: 1mm 0; vertical-align: top; }
+        .pa-items .chk { font-size: 13pt; line-height: 1; padding-right: 2mm; white-space: nowrap; }
+        .pa-items .q { white-space: nowrap; padding-right: 2mm; font-weight: 700; }
         .pa-items .sec td { font-weight: 800; font-size: 8pt; text-transform: uppercase; padding-top: 1.5mm; }
         .pa-tot { width: 100%; border-top: 1px dashed #000; margin-top: 1.5mm; padding-top: 1mm; font-weight: 800; font-size: 12pt; }
         .pa-tot td { padding: .4mm 0; }
@@ -35,15 +31,20 @@
 </style>
 
 <div class="container-lg">
-    @php $itensBalcao = $ficha->balcaoItems(); $itensCozinha = $ficha->cozinhaItems(); @endphp
-
     {{-- Cupom impresso (visível só na impressão — 80mm) --}}
     <div class="print-area">
         <div class="pa-brand">PESQUEIRO SHALOM</div>
         <div class="pa-tipo">Ficha — pré-paga</div>
-        <div class="pa-qrbox"><div id="qrcode-print"></div></div>
         <div class="pa-code">{{ $ficha->codigo }}</div>
-        <div class="pa-code-label">código da ficha</div>
+        @if($ficha->cliente)<div class="pa-cliente">{{ $ficha->cliente }}</div>@endif
+        <table class="pa-items">
+            <tr class="sec"><td colspan="3">Entregar — risque o que for entregue</td></tr>
+            @foreach($ficha->items as $i)
+                <tr><td class="chk">☐</td><td class="q">{{ $i->quantity }}x</td><td>{{ $i->name }}@if($i->observacao)<br><small>obs: {{ $i->observacao }}</small>@endif</td></tr>
+            @endforeach
+        </table>
+        <table class="pa-tot"><tr><td>TOTAL</td><td class="v">{{ $ficha->total_formatted }}</td></tr></table>
+        <div class="pa-info">{{ $ficha->payment_label }} · {{ $ficha->created_at->format('d/m/Y H:i') }}</div>
     </div>
 
     {{-- Tela --}}
@@ -70,47 +71,29 @@
                 </div>
             </div>
             <div class="text-center">
-                <div id="qrcode" class="d-inline-block"></div>
                 <div class="mt-1 no-print">
                     <button class="btn btn-outline-secondary btn-sm" onclick="window.print()">
-                        <span class="material-symbols-outlined">print</span> Imprimir ficha
+                        <span class="material-symbols-outlined">print</span> Imprimir lista de entrega
                     </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="row g-4 no-print">
-        @if($itensBalcao->isNotEmpty())
-        <div class="col-12 col-md-6">
-            <div class="card shadow-sm h-100">
-                <div class="card-header fw-bold"><span class="material-symbols-outlined align-middle">storefront</span> Balcão</div>
-                <ul class="list-group list-group-flush">
-                    @foreach($itensBalcao as $i)
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span>{{ $i->quantity }}x {{ $i->name }}@if($i->observacao)<div class="text-warning small">⚠ {{ $i->observacao }}</div>@endif</span>
-                        <span class="badge {{ $i->status === 'entregue' ? 'bg-secondary' : 'bg-success' }}">{{ $i->status === 'entregue' ? 'Entregue' : 'A retirar' }}</span>
-                    </li>
-                    @endforeach
-                </ul>
-            </div>
-        </div>
-        @endif
-        @if($itensCozinha->isNotEmpty())
-        <div class="col-12 col-md-6">
-            <div class="card shadow-sm h-100">
-                <div class="card-header fw-bold"><span class="material-symbols-outlined align-middle">soup_kitchen</span> Cozinha</div>
-                <ul class="list-group list-group-flush">
-                    @foreach($itensCozinha as $i)
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span>{{ $i->quantity }}x {{ $i->name }}@unless($i->preparo) <span class="badge bg-info text-dark">acompanha</span>@endunless @if($i->observacao)<div class="text-warning small">⚠ {{ $i->observacao }}</div>@endif</span>
-                        <span class="badge {{ $i->status === 'entregue' ? 'bg-secondary' : 'bg-warning text-dark' }}">{{ $i->status === 'entregue' ? 'Entregue' : 'Em preparo' }}</span>
-                    </li>
-                    @endforeach
-                </ul>
-            </div>
-        </div>
-        @endif
+    <div class="card shadow-sm mb-4 no-print">
+        <div class="card-header fw-bold"><span class="material-symbols-outlined align-middle">receipt_long</span> Itens da ficha</div>
+        <ul class="list-group list-group-flush">
+            @foreach($ficha->items as $i)
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <span>
+                    {{ $i->quantity }}x {{ $i->name }}
+                    @if($i->destino === 'cozinha') <span class="badge bg-warning text-dark">cozinha</span> @endif
+                    @if($i->observacao)<div class="text-warning small">⚠ {{ $i->observacao }}</div>@endif
+                </span>
+                <span class="badge bg-light text-dark border">{{ $i->unit_price_formatted }}</span>
+            </li>
+            @endforeach
+        </ul>
     </div>
 
     <div class="mt-4 no-print d-flex gap-2">
@@ -133,19 +116,13 @@
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const printArea = document.querySelector('.print-area');
     if (printArea) document.body.appendChild(printArea);
 
-    new QRCode(document.getElementById('qrcode'), {
-        text: @json($ficha->codigo), width: 130, height: 130, correctLevel: QRCode.CorrectLevel.M,
-    });
-    const qrPrintEl = document.getElementById('qrcode-print');
-    if (qrPrintEl) new QRCode(qrPrintEl, { text: @json($ficha->codigo), width: 320, height: 320, correctLevel: QRCode.CorrectLevel.M });
-
-    @if(session('print'))
+    // Reimpressão: dispara a impressão ao chegar via ?print=1
+    @if(request()->query('print'))
     setTimeout(function () { window.print(); }, 400);
     @endif
 });

@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const CSRF = document.querySelector('meta[name="csrf-token"]').content;
     const filaUrl = @json(route('cozinha.fila'));
     let dados = @json(['pendentes' => $pendentes, 'concluidos' => $concluidos]);
-    let conhecidos = new Set(dados.pendentes.map(p => p.id));
+    let conhecidos = new Set(dados.pendentes.map(p => p.key));
     // Som já vem ATIVADO por padrão; o navegador só libera o áudio após uma interação,
     // então liberamos automaticamente no 1º toque/tecla no tablet (sem precisar do botão).
     let somAtivo = true;
@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function () {
             '<div class="pa-tipo">Pedido pronto — Cozinha</div>' +
             '<div class="pa-cliente">' + esc(p.cliente) + '</div>' +
             '<div class="pa-code">' + esc(p.codigo) + '</div>' +
-            '<div class="pa-code-label">código da ficha</div>' +
+            '<div class="pa-code-label">' + (p.origem === 'comanda' ? 'código da comanda' : 'código da ficha') + '</div>' +
             '<table class="pa-items">' + corpo + '</table>' +
             '<div class="pa-info">Entregar ao cliente · ' + esc(p.hora) + '</div>';
         setTimeout(function () { window.print(); }, 150);
@@ -191,16 +191,19 @@ document.addEventListener('DOMContentLoaded', function () {
     function render() {
         // Fila
         const fila = document.getElementById('fila');
-        fila.innerHTML = dados.pendentes.map(p =>
-            '<div class="ped-card' + (p._novo ? ' ped-novo' : '') + '">' +
-              '<div class="ped-head"><div><div class="ped-cliente">' + esc(p.cliente) + '</div>' +
+        fila.innerHTML = dados.pendentes.map(p => {
+            const origemBadge = p.origem === 'comanda'
+                ? '<span class="badge bg-info text-dark me-1">COMANDA</span>'
+                : '<span class="badge bg-warning text-dark me-1">FICHA</span>';
+            return '<div class="ped-card' + (p._novo ? ' ped-novo' : '') + '">' +
+              '<div class="ped-head"><div><div class="ped-cliente">' + origemBadge + esc(p.cliente) + '</div>' +
                 '<span class="ped-codigo">' + esc(p.codigo) + '</span></div>' +
                 '<div class="text-end ped-hora">' + esc(p.hora) + '<br>há ' + esc(p.desde) + '</div></div>' +
               '<div class="ped-itens">' + preparoHtml(p.itens) + acompanhaHtml(p.itens) + '</div>' +
               '<div class="ped-foot"><button class="btn btn-success w-100 fw-bold" data-concluir="' + esc(p.concluir_url) + '">' +
                 '<span class="material-symbols-outlined">done_all</span> Concluído</button></div>' +
-            '</div>'
-        ).join('');
+            '</div>';
+        }).join('');
         document.getElementById('fila-vazia').classList.toggle('d-none', dados.pendentes.length > 0);
         document.getElementById('count-pendentes').textContent = dados.pendentes.length;
 
@@ -221,10 +224,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const conc = document.getElementById('concluidos');
         conc.innerHTML = dados.concluidos.map((p, idx) =>
             '<div class="done-card">' +
-              '<div class="done-head" data-bs-toggle="collapse" data-bs-target="#done' + p.id + '">' +
+              '<div class="done-head" data-bs-toggle="collapse" data-bs-target="#done' + p.key + '">' +
                 '<span class="nome">' + esc(p.cliente) + ' <span class="text-muted small font-monospace">' + esc(p.codigo) + '</span></span>' +
                 '<span class="badge bg-secondary">' + esc(p.hora) + '</span></div>' +
-              '<div class="collapse" id="done' + p.id + '"><div class="px-3 pb-2">' + itensSmallHtml(p.itens) + '</div></div>' +
+              '<div class="collapse" id="done' + p.key + '"><div class="px-3 pb-2">' + itensSmallHtml(p.itens) + '</div></div>' +
             '</div>'
         ).join('');
         document.getElementById('concluidos-vazio').classList.toggle('d-none', dados.concluidos.length > 0);
@@ -236,9 +239,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const novo = await r.json();
             // detecta pedidos novos na fila
             let temNovo = false;
-            novo.pendentes.forEach(p => { if (!conhecidos.has(p.id)) { p._novo = true; temNovo = true; } });
+            novo.pendentes.forEach(p => { if (!conhecidos.has(p.key)) { p._novo = true; temNovo = true; } });
             dados = novo;
-            conhecidos = new Set(novo.pendentes.map(p => p.id));
+            conhecidos = new Set(novo.pendentes.map(p => p.key));
             render();
             if (temNovo) beep();
             document.getElementById('conn-status').textContent = 'atualizado';

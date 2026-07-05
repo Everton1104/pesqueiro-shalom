@@ -34,7 +34,7 @@ class CardapioController extends Controller
         return view('cardapio.index', [
             'items'        => $items,
             'categoryMeta' => $categoryMeta->keyBy('name'),
-            'categories'   => CardapioItem::CATEGORIES,
+            'categories'   => CardapioCategory::orderBy('sort_order')->pluck('name'),
             'statuses'     => CardapioItem::STATUSES,
         ]);
     }
@@ -42,7 +42,7 @@ class CardapioController extends Controller
     public function create()
     {
         return view('cardapio.create', [
-            'categories' => CardapioItem::CATEGORIES,
+            'categories' => CardapioCategory::orderBy('sort_order')->pluck('name'),
             'statuses'   => CardapioItem::STATUSES,
             'nextOrder'  => CardapioItem::max('sort_order') + 1,
         ]);
@@ -74,7 +74,7 @@ class CardapioController extends Controller
     {
         return view('cardapio.edit', [
             'cardapio'   => $cardapio,
-            'categories' => CardapioItem::CATEGORIES,
+            'categories' => CardapioCategory::orderBy('sort_order')->pluck('name'),
             'statuses'   => CardapioItem::STATUSES,
         ]);
     }
@@ -146,5 +146,35 @@ class CardapioController extends Controller
         }
 
         return response()->json(['ok' => true]);
+    }
+
+    // Cria uma nova seção (categoria) do cardápio
+    public function storeCategory(Request $request)
+    {
+        $data = $request->validate([
+            'name'    => 'required|string|max:100|unique:cardapio_categories,name',
+            'cozinha' => 'boolean',
+        ]);
+
+        $data['cozinha']    = !empty($data['cozinha']);
+        $data['sort_order'] = (int) CardapioCategory::max('sort_order') + 1;
+        CardapioCategory::create($data);
+
+        return redirect()->route('cardapio.index')
+            ->with('status', 'Seção "' . $data['name'] . '" criada.');
+    }
+
+    // Remove uma seção — bloqueia se ainda houver itens nela
+    public function destroyCategory(Request $request, CardapioCategory $category)
+    {
+        if (CardapioItem::where('category', $category->name)->exists()) {
+            return back()->with('error', 'Não é possível remover a seção "' . $category->name . '": ainda há itens nela. Mova ou exclua os itens antes.');
+        }
+
+        $nome = $category->name;
+        $category->delete();
+
+        return redirect()->route('cardapio.index')
+            ->with('status', 'Seção "' . $nome . '" removida.');
     }
 }
