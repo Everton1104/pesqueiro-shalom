@@ -81,9 +81,11 @@
     <div class="pa-code">{{ $printFicha->codigo }}</div>
     @if($printFicha->cliente)<div class="pa-cliente">{{ $printFicha->cliente }}</div>@endif
     <table class="pa-items">
-        <tr class="sec"><td colspan="3">Entregar — risque o que for entregue</td></tr>
+        <tr class="sec"><td colspan="2">Entregar — risque o que for entregue</td></tr>
         @foreach($printFicha->items as $i)
-            <tr><td class="chk">☐</td><td class="q">{{ $i->quantity }}x</td><td>{{ $i->name }}@if($i->observacao)<br><small>obs: {{ $i->observacao }}</small>@endif</td></tr>
+            @for($k = 0; $k < (int) $i->quantity; $k++)
+                <tr><td class="chk">☐</td><td>{{ $i->name }}@if($i->observacao && $k === 0)<br><small>obs: {{ $i->observacao }}</small>@endif</td></tr>
+            @endfor
         @endforeach
     </table>
     <table class="pa-tot"><tr><td>TOTAL</td><td class="v">{{ $printFicha->total_formatted }}</td></tr></table>

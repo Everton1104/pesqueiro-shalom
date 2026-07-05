@@ -77,8 +77,13 @@ class CozinhaController extends Controller
         return ['pendentes' => $pendentes, 'concluidos' => $concluidos];
     }
 
-    private function payloadFicha(Ficha $ficha): array
+    private function payloadFicha(Ficha $ficha, bool $soPendentes = false): array
     {
+        $itens = $ficha->cozinhaItems();
+        if ($soPendentes) {
+            $itens = $itens->where('status', 'pendente');
+        }
+
         return [
             'origem'       => 'ficha',
             'key'          => 'ficha-' . $ficha->id,
@@ -88,7 +93,7 @@ class CozinhaController extends Controller
             'desde'        => $ficha->created_at->diffForHumans(null, true),
             'criado_em'    => $ficha->created_at->getTimestamp(),
             'concluir_url' => route('cozinha.concluir', $ficha),
-            'itens'        => $ficha->cozinhaItems()->map(fn($i) => [
+            'itens'        => $itens->map(fn($i) => [
                 'name'     => $i->name,
                 'quantity' => $i->quantity,
                 'obs'      => $i->observacao,
@@ -97,8 +102,13 @@ class CozinhaController extends Controller
         ];
     }
 
-    private function payloadComanda(Comanda $comanda): array
+    private function payloadComanda(Comanda $comanda, bool $soPendentes = false): array
     {
+        $itens = $comanda->items->filter(fn($i) => $i->preparo);
+        if ($soPendentes) {
+            $itens = $itens->filter(fn($i) => $i->status === 'pendente');
+        }
+
         return [
             'origem'       => 'comanda',
             'key'          => 'comanda-' . $comanda->id,
@@ -109,7 +119,7 @@ class CozinhaController extends Controller
             'criado_em'    => $comanda->created_at->getTimestamp(),
             'concluir_url' => route('cozinha.comandas.concluir', $comanda),
             // Na comanda só há itens de preparo (sem "acompanha")
-            'itens'        => $comanda->items->filter(fn($i) => $i->preparo)->map(fn($i) => [
+            'itens'        => $itens->map(fn($i) => [
                 'name'     => $i->name,
                 'quantity' => $i->quantity,
                 'obs'      => $i->observacao,
@@ -125,7 +135,7 @@ class CozinhaController extends Controller
             ->with('items')
             ->orderBy('id')
             ->get()
-            ->map(fn($f) => $this->payloadFicha($f));
+            ->map(fn($f) => $this->payloadFicha($f, true));
     }
 
     private function fichasConcluidas()
@@ -147,7 +157,7 @@ class CozinhaController extends Controller
             ->with('items')
             ->orderBy('id')
             ->get()
-            ->map(fn($c) => $this->payloadComanda($c));
+            ->map(fn($c) => $this->payloadComanda($c, true));
     }
 
     private function comandasConcluidas()

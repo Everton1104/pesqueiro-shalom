@@ -1,6 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+    // Itens pendentes que vão para a cozinha (alimentam o cupom de produção)
+    $cozinhaItens = $comanda->items->where('preparo', true)->where('status', 'pendente')->values();
+@endphp
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 <style>
     .material-symbols-outlined { font-variation-settings: 'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 20; vertical-align: middle; font-size: 18px; line-height: 1; }
@@ -136,9 +140,29 @@
         .da-pessoa .da-linha {
             display: flex; justify-content: space-between; font-size: 8.5pt;
         }
+
+        /* ── Cupom de produção para a cozinha ── */
+        body.print-cozinha .print-area,
+        body.print-cozinha .resumo-area,
+        body.print-cozinha .divisao-area { display: none !important; }
+        body.print-cozinha .cozinha-area {
+            display: block; width: 100%; color: #000;
+            font-family: 'Nunito', Arial, sans-serif;
+        }
+        .ca-brand { text-align: center; font-weight: 800; font-size: 11pt; letter-spacing: .06em; margin-bottom: 1mm; }
+        .ca-tipo { text-align: center; font-size: 9pt; text-transform: uppercase; letter-spacing: .14em; margin: 1mm 0 2mm; font-weight: 700; }
+        .ca-cliente { text-align: center; font-size: 20pt; font-weight: 800; line-height: 1.1; margin: 2mm 0 1mm; }
+        .ca-code { text-align: center; font-family: 'Courier New', monospace; font-size: 14pt; font-weight: 700; letter-spacing: .14em; margin-bottom: 1mm; }
+        .ca-items { width: 100%; border-collapse: collapse; font-size: 11pt; border-top: 1px dashed #000; margin-top: 2.5mm; }
+        .ca-items td { padding: .9mm 0; vertical-align: top; }
+        .ca-items .chk { font-size: 13pt; line-height: 1; padding-right: 2mm; white-space: nowrap; width: 8mm; }
+        .ca-items .q { white-space: nowrap; padding-right: 2mm; font-weight: 800; }
+        .ca-items .sec td { font-weight: 800; font-size: 8.5pt; text-transform: uppercase; padding-top: 1.8mm; letter-spacing: .04em; }
+        .ca-info { text-align: center; font-size: 8pt; margin-top: 2.5mm; padding-top: 2mm; border-top: 1px dashed #000; }
     }
 
     .divisao-area { display: none; }
+    .cozinha-area { display: none; }
 </style>
 
 <div class="container-lg">
@@ -206,6 +230,25 @@
         </div>
         <div id="divisao-body"></div>
         <div class="ra-foot">Obrigado pela preferência!</div>
+    </div>
+
+    {{-- Cupom de produção para a cozinha (80mm) --}}
+    <div class="cozinha-area">
+        <div class="ca-brand">PESQUEIRO SHALOM</div>
+        <div class="ca-tipo">Produção — Cozinha</div>
+        @if($comanda->cliente)<div class="ca-cliente">{{ $comanda->cliente }}</div>@endif
+        <div class="ca-code">{{ $comanda->codigo }}</div>
+        <table class="ca-items">
+            <tr class="sec"><td colspan="3">Risque quando pronto</td></tr>
+            @foreach($cozinhaItens as $i)
+                <tr>
+                    <td class="chk">☐</td>
+                    <td class="q">{{ $i->quantity }}x</td>
+                    <td>{{ $i->name }}@if($i->observacao)<br><small>obs: {{ $i->observacao }}</small>@endif</td>
+                </tr>
+            @endforeach
+        </table>
+        <div class="ca-info">Comanda · {{ $comanda->created_at->format('d/m/Y H:i') }}</div>
     </div>
 
     <div class="mb-3">
@@ -359,6 +402,16 @@
                     </table>
                 </div>
     </div>{{-- /Itens da comanda (full width) --}}
+
+    {{-- Imprimir cupom de produção para a cozinha --}}
+    @if($comanda->is_open && $cozinhaItens->isNotEmpty())
+    <div class="mb-4 no-print">
+        <button type="button" class="btn btn-warning fw-bold w-100" onclick="imprimirCozinha()">
+            <span class="material-symbols-outlined">soup_kitchen</span> Imprimir p/ cozinha
+            <span class="badge bg-dark ms-1">{{ $cozinhaItens->sum('quantity') }}x</span>
+        </button>
+    </div>
+    @endif
 
     {{-- ── PAD de itens (apenas comanda aberta, full width) ── --}}
     @if($comanda->is_open)
@@ -719,7 +772,12 @@ function imprimirResumo() {
     document.body.classList.add('print-resumo');
     window.print();
 }
-window.addEventListener('afterprint', () => document.body.classList.remove('print-resumo', 'print-divisao'));
+// Imprime o cupom de produção (somente itens que vão para a cozinha)
+function imprimirCozinha() {
+    document.body.classList.add('print-cozinha');
+    window.print();
+}
+window.addEventListener('afterprint', () => document.body.classList.remove('print-resumo', 'print-divisao', 'print-cozinha'));
 
 // ── Acertos (pagamentos parciais) ──
 @php
@@ -786,6 +844,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (resumoArea) document.body.appendChild(resumoArea);
     const divisaoArea = document.querySelector('.divisao-area');
     if (divisaoArea) document.body.appendChild(divisaoArea);
+    const cozinhaArea = document.querySelector('.cozinha-area');
+    if (cozinhaArea) document.body.appendChild(cozinhaArea);
 
     new QRCode(document.getElementById('qrcode'), {
         text: @json($comanda->codigo),
