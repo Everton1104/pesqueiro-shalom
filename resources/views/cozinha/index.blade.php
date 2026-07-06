@@ -144,27 +144,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-    // Cupom de entrega impresso ao concluir (nome + código + itens) — vai pra impressora da cozinha
+    // Área de impressão dos cupons da cozinha (usada pelo botão "imprimir" do card)
     const printArea = document.getElementById('cozinha-print');
     if (printArea) document.body.appendChild(printArea); // fora do #app (oculto na impressão)
 
-    function imprimirEntrega(p) {
+    // Cupom de produção (opcional, no botão do card): só nome do cliente + itens preparados (porções)
+    function imprimirProducao(p) {
         if (!printArea) return;
-        const prep  = p.itens.filter(i => i.preparo);
-        const acomp = p.itens.filter(i => !i.preparo);
+        const prep = p.itens.filter(i => i.preparo);
         const linha = i => '<tr><td class="q">' + i.quantity + 'x</td><td>' + esc(i.name) +
             (i.obs ? '<br><small>obs: ' + esc(i.obs) + '</small>' : '') + '</td></tr>';
-        let corpo = '';
-        if (prep.length)  corpo += '<tr class="sec"><td colspan="2">Porção</td></tr>' + prep.map(linha).join('');
-        if (acomp.length) corpo += '<tr class="sec"><td colspan="2">Acompanha</td></tr>' + acomp.map(linha).join('');
         printArea.innerHTML =
-            '<div class="pa-brand">PESQUEIRO SHALOM</div>' +
-            '<div class="pa-tipo">Pedido pronto — Cozinha</div>' +
             '<div class="pa-cliente">' + esc(p.cliente) + '</div>' +
-            '<div class="pa-code">' + esc(p.codigo) + '</div>' +
-            '<div class="pa-code-label">' + (p.origem === 'comanda' ? 'código da comanda' : 'código da ficha') + '</div>' +
-            '<table class="pa-items">' + corpo + '</table>' +
-            '<div class="pa-info">Entregar ao cliente · ' + esc(p.hora) + '</div>';
+            '<table class="pa-items">' + prep.map(linha).join('') + '</table>';
         setTimeout(function () { window.print(); }, 150);
     }
 
@@ -200,8 +192,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 '<span class="ped-codigo">' + esc(p.codigo) + '</span></div>' +
                 '<div class="text-end ped-hora">' + esc(p.hora) + '<br>há ' + esc(p.desde) + '</div></div>' +
               '<div class="ped-itens">' + preparoHtml(p.itens) + acompanhaHtml(p.itens) + '</div>' +
-              '<div class="ped-foot"><button class="btn btn-success w-100 fw-bold" data-concluir="' + esc(p.concluir_url) + '">' +
-                '<span class="material-symbols-outlined">done_all</span> Concluído</button></div>' +
+              '<div class="ped-foot d-flex gap-2">' +
+                '<button class="btn btn-outline-secondary px-3" data-imprimir="' + esc(p.key) + '" title="Imprimir cupom (itens + cliente)">' +
+                  '<span class="material-symbols-outlined">print</span>' +
+                '</button>' +
+                '<button class="btn btn-success flex-grow-1 fw-bold" data-concluir="' + esc(p.concluir_url) + '">' +
+                  '<span class="material-symbols-outlined">done_all</span> Concluído</button>' +
+              '</div>' +
             '</div>';
         }).join('');
         document.getElementById('fila-vazia').classList.toggle('d-none', dados.pendentes.length > 0);
@@ -209,15 +206,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
         fila.querySelectorAll('[data-concluir]').forEach(b => b.addEventListener('click', async function () {
             this.disabled = true;
-            const pedido = dados.pendentes.find(p => p.concluir_url === this.dataset.concluir);
             try {
                 const r = await fetch(this.dataset.concluir, { method: 'PATCH',
                     headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' } });
                 if (r.ok) {
-                    if (pedido) imprimirEntrega(pedido); // imprime o cupom de entrega
                     atualizar();
                 }
             } catch (e) { this.disabled = false; }
+        }));
+
+        fila.querySelectorAll('[data-imprimir]').forEach(b => b.addEventListener('click', function () {
+            const pedido = dados.pendentes.find(p => p.key === this.dataset.imprimir);
+            if (pedido) imprimirProducao(pedido);
         }));
 
         // Concluídos (colapsados por cliente)

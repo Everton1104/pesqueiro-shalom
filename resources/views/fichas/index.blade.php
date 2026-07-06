@@ -55,43 +55,21 @@
         html, body { background: #fff !important; margin: 0; padding: 0; }
         body > #app { display: none !important; }
         .print-area { display: block; width: 100%; color: #000; font-family: 'Nunito', Arial, sans-serif; }
-        .pa-brand { text-align: center; font-weight: 800; font-size: 11pt; letter-spacing: .06em; margin-bottom: 1mm; }
-        .pa-tipo { text-align: center; font-size: 8pt; text-transform: uppercase; letter-spacing: .14em; margin-bottom: 2mm; }
-        .pa-qrbox { border: 2px solid #000; border-radius: 4px; padding: 2mm; width: 50mm; margin: 0 auto; }
-        .pa-qrbox img, .pa-qrbox canvas { width: 100% !important; height: auto !important; display: block; image-rendering: pixelated; }
-        .pa-code { text-align: center; font-family: 'Courier New', monospace; font-size: 22pt; font-weight: 700; letter-spacing: .18em; margin: 2.5mm 0 1mm; }
-        .pa-code-label { text-align: center; font-size: 7pt; text-transform: uppercase; letter-spacing: .12em; }
-        .pa-cliente { text-align: center; font-size: 12pt; font-weight: 800; margin-top: 2mm; }
-        .pa-items { width: 100%; border-collapse: collapse; font-size: 9pt; border-top: 1px dashed #000; margin-top: 2.5mm; }
+        .pa-items { width: 100%; border-collapse: collapse; font-size: 9pt; }
         .pa-items td { padding: 1mm 0; vertical-align: top; }
         .pa-items .chk { font-size: 13pt; line-height: 1; padding-right: 2mm; white-space: nowrap; }
-        .pa-items .q { white-space: nowrap; padding-right: 2mm; font-weight: 700; }
-        .pa-items .sec td { font-weight: 800; font-size: 8pt; text-transform: uppercase; padding-top: 1.5mm; }
-        .pa-tot { width: 100%; border-top: 1px dashed #000; margin-top: 1.5mm; padding-top: 1mm; font-weight: 800; font-size: 12pt; }
-        .pa-tot td { padding: .4mm 0; }
-        .pa-tot .v { text-align: right; }
-        .pa-info { text-align: center; font-size: 8pt; margin-top: 2.5mm; padding-top: 2mm; border-top: 1px dashed #000; }
     }
 </style>
 
 @if($printFicha)
 <div class="print-area" id="print-area">
-    <div class="pa-brand">PESQUEIRO SHALOM</div>
-    <div class="pa-tipo">Ficha — pré-paga</div>
-    <div class="pa-code">{{ $printFicha->codigo }}</div>
-    @if($printFicha->cliente)<div class="pa-cliente">{{ $printFicha->cliente }}</div>@endif
     <table class="pa-items">
-        <tr class="sec"><td colspan="2">Entregar — risque o que for entregue</td></tr>
         @foreach($printFicha->items as $i)
             @for($k = 0; $k < (int) $i->quantity; $k++)
                 <tr><td class="chk">☐</td><td>{{ $i->name }}@if($i->observacao && $k === 0)<br><small>obs: {{ $i->observacao }}</small>@endif</td></tr>
             @endfor
         @endforeach
     </table>
-    <table class="pa-tot"><tr><td>TOTAL</td><td class="v">{{ $printFicha->total_formatted }}</td></tr></table>
-    <div class="pa-info">
-        {{ $printFicha->payment_label }} · {{ $printFicha->created_at->format('d/m/Y H:i') }}
-    </div>
 </div>
 @endif
 
