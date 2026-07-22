@@ -14,6 +14,11 @@
         body > #app { display: none !important; }
 
         .print-area { display: block; width: 100%; color: #000; font-family: 'Nunito', Arial, sans-serif; }
+        .pa-brand { text-align: center; font-weight: 800; font-size: 12pt; letter-spacing: .06em; text-transform: uppercase; }
+        .pa-tipo { text-align: center; font-size: 8pt; text-transform: uppercase; letter-spacing: .12em; margin: 1mm 0; font-weight: 700; }
+        .pa-cliente { text-align: center; font-size: 10pt; font-weight: 700; }
+        .pa-data { text-align: center; font-size: 8pt; margin-bottom: 2mm; }
+        .pa-divisor { border: none; border-top: 1px dashed #000; margin: 1mm 0 2mm; }
         .pa-items { width: 100%; border-collapse: collapse; font-size: 9pt; }
         .pa-items td { padding: 1mm 0; vertical-align: top; }
         .pa-items .chk { font-size: 13pt; line-height: 1; padding-right: 2mm; white-space: nowrap; }
@@ -23,6 +28,11 @@
 <div class="container-lg">
     {{-- Cupom impresso (visível só na impressão — 80mm): lista de entrega (todos os itens) --}}
     <div class="print-area">
+        <div class="pa-brand">Pesqueiro Shalom</div>
+        <div class="pa-tipo">Ficha · {{ $ficha->codigo }}</div>
+        @if($ficha->cliente)<div class="pa-cliente">{{ $ficha->cliente }}</div>@endif
+        <div class="pa-data">{{ $ficha->created_at->format('d/m/Y H:i') }}</div>
+        <hr class="pa-divisor">
         <table class="pa-items">
             @foreach($ficha->items as $i)
                 @for($k = 0; $k < (int) $i->quantity; $k++)
